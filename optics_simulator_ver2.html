@@ -1,0 +1,2497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optical Ray Simulator · Telescope Edition</title>
+<style>
+:root {
+  --bg:#0a0e14; --panel:#131820; --panel-2:#1a2029;
+  --border:#2a3441; --text:#e4e8ee; --muted:#8a95a5;
+  --accent:#5bc8ff; --accent-2:#ffb347;
+  --danger:#ff5b6b; --success:#5fd39a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:Arial,sans-serif;font-size:13px;}
+#app{display:grid;grid-template-columns:340px 1fr;height:100vh;}
+#sidebar{background:var(--panel);border-right:1px solid var(--border);
+  overflow-y:auto;display:flex;flex-direction:column;}
+#sidebar::-webkit-scrollbar{width:8px;}
+#sidebar::-webkit-scrollbar-track{background:var(--panel);}
+#sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+.header{padding:18px 20px;border-bottom:1px solid var(--border);
+  background:linear-gradient(135deg,var(--panel-2),var(--panel));}
+.header h1{font-size:15px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--accent);
+  font-family:'Courier New',monospace;}
+.header .sub{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:0.5px;}
+.section{padding:14px 20px;border-bottom:1px solid var(--border);}
+.section h2{font-size:10px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--muted);
+  margin-bottom:10px;font-family:'Courier New',monospace;
+  display:flex;justify-content:space-between;align-items:center;}
+.section h2 .collapse{cursor:pointer;color:var(--muted);font-size:10px;user-select:none;}
+.section h2 .collapse:hover{color:var(--accent);}
+.section.collapsed .section-body{display:none;}
+.row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.row label{flex:1;font-size:12px;color:var(--text);}
+.row label .unit{color:var(--muted);font-size:11px;margin-left:4px;}
+input[type="number"],input[type="text"],select{
+  background:var(--bg);border:1px solid var(--border);color:var(--text);
+  padding:6px 8px;border-radius:4px;
+  font-family:'Courier New',monospace;font-size:12px;
+  width:90px;transition:border-color 0.15s;}
+input[type="number"]:focus,input[type="text"]:focus,select:focus{
+  outline:none;border-color:var(--accent);}
+select{width:120px;}
+input[type="checkbox"]{accent-color:var(--accent);width:14px;height:14px;}
+button{background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+  padding:7px 12px;border-radius:4px;cursor:pointer;
+  font-family:Arial,sans-serif;font-size:12px;font-weight:500;
+  transition:all 0.15s;}
+button:hover{background:var(--border);border-color:var(--accent);}
+button.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700;}
+button.danger{background:transparent;border-color:var(--danger);color:var(--danger);}
+button.danger:hover{background:var(--danger);color:var(--bg);}
+button.small{padding:4px 8px;font-size:11px;}
+.btn-group{display:flex;gap:6px;flex-wrap:wrap;}
+.view-toggle{display:flex;gap:0;margin:0;}
+.view-toggle button{flex:1;border-radius:0;margin:0;}
+.view-toggle button:first-child{border-radius:4px 0 0 4px;}
+.view-toggle button:last-child{border-radius:0 4px 4px 0;}
+.view-toggle button.active{background:var(--accent);color:var(--bg);
+  border-color:var(--accent);font-weight:700;}
+#element-list{display:flex;flex-direction:column;gap:6px;}
+.element-card{background:var(--panel-2);border:1px solid var(--border);
+  border-radius:5px;padding:10px;font-size:12px;position:relative;}
+.element-card .el-header{display:flex;justify-content:space-between;
+  align-items:center;margin-bottom:8px;}
+.element-card .el-type{font-weight:700;font-size:11px;color:var(--accent);
+  letter-spacing:1px;text-transform:uppercase;
+  font-family:'Courier New',monospace;}
+.element-card .el-row{display:flex;align-items:center;gap:6px;
+  margin-bottom:5px;font-size:11px;}
+.element-card .el-row label{flex:1;color:var(--muted);font-size:11px;}
+.element-card input[type="number"]{width:70px;padding:3px 5px;font-size:11px;}
+.element-card .el-actions{display:flex;gap:4px;margin-top:8px;}
+.element-card .lock-toggle{color:var(--muted);cursor:pointer;user-select:none;
+  font-family:'Courier New',monospace;font-size:10px;
+  padding:2px 6px;border:1px solid var(--border);
+  border-radius:3px;background:transparent;}
+.element-card .lock-toggle.locked{color:var(--accent-2);border-color:var(--accent-2);}
+#main{position:relative;overflow:hidden;background:#05080c;}
+#canvas2d,#canvas3d{width:100%;height:100%;display:block;}
+#canvas3d{display:none;}
+#hud,#metrics{position:absolute;background:rgba(19,24,32,0.9);
+  backdrop-filter:blur(6px);border:1px solid var(--border);border-radius:5px;
+  padding:10px 12px;font-family:'Courier New',monospace;
+  font-size:11px;color:var(--muted);line-height:1.6;}
+#hud{top:14px;left:14px;pointer-events:none;}
+#hud .val{color:var(--accent);}
+#metrics{top:14px;left:200px;min-width:210px;}
+#metrics .metrics-title{color:var(--accent);font-weight:700;letter-spacing:1px;
+  font-size:9px;text-transform:uppercase;margin-bottom:6px;}
+#metrics .metric-row{display:flex;justify-content:space-between;gap:8px;}
+#metrics .val{color:var(--success);}
+#view-controls{position:absolute;top:14px;right:14px;
+  background:rgba(19,24,32,0.85);backdrop-filter:blur(6px);
+  border:1px solid var(--border);border-radius:5px;padding:6px;
+  display:flex;gap:4px;}
+#view-controls button{padding:5px 9px;font-size:11px;
+  font-family:'Courier New',monospace;}
+#legend{position:absolute;bottom:14px;left:14px;
+  background:rgba(19,24,32,0.85);backdrop-filter:blur(6px);
+  border:1px solid var(--border);border-radius:5px;
+  padding:10px 12px;font-family:'Courier New',monospace;
+  font-size:10px;color:var(--muted);line-height:1.8;max-width:240px;}
+#legend .legend-title{color:var(--accent);font-weight:700;letter-spacing:1px;
+  margin-bottom:4px;text-transform:uppercase;font-size:9px;}
+.legend-item{display:flex;align-items:center;gap:6px;}
+.legend-dot{width:10px;height:10px;border-radius:50%;}
+.tip{color:var(--muted);font-size:10px;margin-top:2px;font-style:italic;}
+#psf-inset,#rayfan-inset,#detector-strip{position:absolute;
+  background:rgba(19,24,32,0.92);backdrop-filter:blur(6px);
+  border:1px solid var(--border);border-radius:5px;overflow:hidden;}
+#psf-inset{bottom:14px;right:14px;width:220px;height:220px;display:none;}
+#rayfan-inset{top:14px;right:80px;width:220px;height:160px;display:none;}
+#detector-strip{bottom:14px;left:260px;right:250px;height:110px;display:none;}
+.psf-header,.rayfan-header,.detector-header{
+  font-family:'Courier New',monospace;font-size:9px;color:var(--accent);
+  padding:6px 10px;background:rgba(10,14,20,0.8);
+  border-bottom:1px solid var(--border);letter-spacing:1px;
+  text-transform:uppercase;
+  display:flex;justify-content:space-between;align-items:center;}
+#psf-canvas,#rayfan-canvas,#detector-canvas{
+  width:100%;height:calc(100% - 26px);display:block;}
+.footer-actions{padding:14px 20px;display:flex;flex-direction:column;
+  gap:8px;margin-top:auto;}
+.add-buttons{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.param-grid{display:grid;grid-template-columns:1fr auto;
+  gap:8px 10px;align-items:center;}
+.param-grid label{font-size:12px;color:var(--text);}
+.param-grid .unit{color:var(--muted);font-size:10px;}
+.wavelength-display{display:inline-block;width:22px;height:14px;
+  border-radius:2px;vertical-align:middle;margin-left:6px;
+  border:1px solid var(--border);}
+.infinity-mode{background:linear-gradient(135deg,rgba(91,200,255,0.08),transparent);
+  border-left:2px solid var(--accent);
+  padding:8px 10px;border-radius:3px;margin-top:8px;
+  font-size:11px;color:var(--muted);}
+.infinity-mode.hidden{display:none;}
+.close-btn{color:var(--muted);cursor:pointer;font-size:12px;
+  background:none;border:none;padding:0;margin:0;}
+.close-btn:hover{color:var(--danger);}
+.mono-controls.hidden,.white-controls.hidden,.filter-controls.hidden{display:none;}
+</style>
+</head>
+<body>
+<div id="app">
+<aside id="sidebar">
+  <div class="header">
+    <h1>◎ Optical Simulator</h1>
+    <div class="sub">Telescope Edition · Rotatable</div>
+  </div>
+
+  <div class="section">
+    <h2>View Mode <span class="collapse" data-target="view-section">−</span></h2>
+    <div class="section-body" id="view-section">
+      <div class="view-toggle">
+        <button id="view-2d" class="active">2D</button>
+        <button id="view-3d">3D</button>
+      </div>
+      <div class="tip" style="margin-top:8px;">3D: drag to rotate · scroll to zoom</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Light Source <span class="collapse" data-target="src-section">−</span></h2>
+    <div class="section-body" id="src-section">
+      <div class="param-grid">
+        <label>Source mode</label>
+        <select id="src-mode">
+          <option value="point">Point source (finite)</option>
+          <option value="infinity" selected>Star at infinity</option>
+          <option value="parallel">Parallel beam (finite)</option>
+          <option value="collimated">Collimated fan</option>
+        </select>
+      </div>
+      <div id="finite-controls" class="param-grid" style="margin-top:8px;">
+        <label>Position X <span class="unit">mm</span></label>
+        <input type="number" id="src-x" value="-400" step="10">
+        <label>Position Y <span class="unit">mm</span></label>
+        <input type="number" id="src-y" value="0" step="10">
+        <label>Direction <span class="unit">°</span></label>
+        <input type="number" id="src-rot" value="0" step="1">
+      </div>
+      <div id="infinity-controls" class="infinity-mode hidden">
+        <div style="color:var(--accent);font-weight:700;margin-bottom:6px;">⭐ INFINITY MODE</div>
+        <div class="param-grid" style="margin-top:4px;">
+          <label style="color:var(--text);">Field angle <span class="unit">°</span></label>
+          <input type="number" id="src-angle" value="0" step="0.1" min="-30" max="30">
+          <label style="color:var(--text);">Beam width <span class="unit">mm</span></label>
+          <input type="number" id="src-beam" value="200" step="10" min="10">
+        </div>
+      </div>
+      <div class="param-grid" style="margin-top:8px;">
+        <label>Ray count</label>
+        <input type="number" id="src-rays" value="11" min="1" max="51" step="2">
+        <label id="spread-label">Spread <span class="unit">°</span></label>
+        <input type="number" id="src-spread" value="20" min="0" max="90" step="1">
+      </div>
+
+      <div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border);">
+        <div class="param-grid">
+          <label>Spectrum mode</label>
+          <select id="src-spectrum">
+            <option value="mono" selected>Monochromatic</option>
+            <option value="dispersion">RGB dispersion (3 colours)</option>
+            <option value="white">White light (multi-λ)</option>
+          </select>
+        </div>
+        <div id="mono-controls" class="mono-controls param-grid" style="margin-top:8px;">
+          <label>Wavelength <span class="unit">nm</span></label>
+          <div>
+            <input type="number" id="src-wavelength" value="550" min="380" max="750" step="10" style="width:70px;">
+            <span class="wavelength-display" id="wl-color"></span>
+          </div>
+        </div>
+        <div id="white-controls" class="white-controls hidden param-grid" style="margin-top:8px;">
+          <label>λ min <span class="unit">nm</span></label>
+          <input type="number" id="src-wl-min" value="400" min="380" max="750" step="10">
+          <label>λ max <span class="unit">nm</span></label>
+          <input type="number" id="src-wl-max" value="700" min="380" max="750" step="10">
+          <label>Samples</label>
+          <input type="number" id="src-wl-steps" value="9" min="3" max="15" step="2">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Aberrations <span class="collapse" data-target="aber-section">−</span></h2>
+    <div class="section-body" id="aber-section">
+      <div class="row"><label><input type="checkbox" id="aber-chromatic" checked> Chromatic aberration</label></div>
+      <div class="tip">Off: all wavelengths refract equally (ideal achromat)</div>
+      <div class="row" style="margin-top:8px;"><label><input type="checkbox" id="aber-spherical"> Spherical aberration</label></div>
+      <div class="tip">Off: perfect paraxial focus (ideal lens)</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Medium <span class="collapse" data-target="medium-section">−</span></h2>
+    <div class="section-body" id="medium-section">
+      <div class="param-grid">
+        <label>Ambient index n₀</label>
+        <input type="number" id="medium-n" value="1.00" step="0.01" min="1.00">
+      </div>
+      <div class="tip">Air ≈ 1.00 · Water ≈ 1.33</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Optical Elements <span class="collapse" data-target="elements-section">−</span></h2>
+    <div class="section-body" id="elements-section">
+      <div id="element-list"></div>
+      <div class="add-buttons" style="margin-top:10px;">
+        <button class="small" data-add="convex-lens">+ Convex Lens</button>
+        <button class="small" data-add="concave-lens">+ Concave Lens</button>
+        <button class="small" data-add="flat-glass">+ Flat Glass</button>
+        <button class="small" data-add="flat-mirror">+ Flat Mirror</button>
+        <button class="small" data-add="convex-mirror">+ Convex Mirror</button>
+        <button class="small" data-add="concave-mirror">+ Concave Mirror</button>
+        <button class="small" data-add="aperture-stop">+ Aperture Stop</button>
+        <button class="small" data-add="filter">+ Filter</button>
+        <button class="small" data-add="detector">+ Detector</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Display <span class="collapse" data-target="display-section">−</span></h2>
+    <div class="section-body" id="display-section">
+      <div class="row"><label><input type="checkbox" id="show-focal" checked> Focal points</label></div>
+      <div class="row"><label><input type="checkbox" id="show-axis" checked> Horizontal reference</label></div>
+      <div class="row"><label><input type="checkbox" id="show-grid" checked> Grid</label></div>
+      <div class="row"><label><input type="checkbox" id="show-convergence" checked> Convergence point</label></div>
+      <div class="row"><label><input type="checkbox" id="show-metrics" checked> Metrics HUD</label></div>
+      <div class="row"><label><input type="checkbox" id="show-psf"> PSF inset</label></div>
+      <div class="row"><label><input type="checkbox" id="show-rayfan"> Ray fan diagram</label></div>
+      <div class="row"><label><input type="checkbox" id="show-ruler"> Measurement tool</label></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Telescope Presets <span class="collapse" data-target="presets-section">−</span></h2>
+    <div class="section-body" id="presets-section">
+      <div class="btn-group">
+        <button class="small" data-preset="keplerian">Keplerian</button>
+        <button class="small" data-preset="galilean">Galilean</button>
+        <button class="small" data-preset="newtonian">Newtonian</button>
+        <button class="small" data-preset="cassegrain">Cassegrain</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-actions">
+    <div class="btn-group">
+      <button id="reset-view">Reset View</button>
+      <button id="clear-all" class="danger">Clear All</button>
+    </div>
+    <div class="btn-group">
+      <button id="export-json" class="small">Export JSON</button>
+      <button id="import-json" class="small">Import JSON</button>
+      <input type="file" id="import-file" accept=".json" style="display:none">
+    </div>
+  </div>
+</aside>
+
+<main id="main">
+  <canvas id="canvas2d"></canvas>
+  <canvas id="canvas3d"></canvas>
+
+  <div id="hud">
+    <div>Zoom: <span class="val" id="hud-zoom">1.00×</span></div>
+    <div>Pan: <span class="val" id="hud-pan">0, 0</span></div>
+    <div>Mouse: <span class="val" id="hud-mouse">—</span></div>
+    <div>Elements: <span class="val" id="hud-count">0</span></div>
+    <div id="hud-ruler" style="display:none;">Ruler: <span class="val" id="hud-ruler-val">—</span></div>
+  </div>
+
+  <div id="metrics" style="display:none;">
+    <div class="metrics-title">◎ Telescope Metrics</div>
+    <div class="metric-row"><span>f_objective:</span><span class="val" id="m-fobj">—</span></div>
+    <div class="metric-row"><span>f_eyepiece:</span><span class="val" id="m-feye">—</span></div>
+    <div class="metric-row"><span>Magnification:</span><span class="val" id="m-mag">—</span></div>
+    <div class="metric-row"><span>Tube length:</span><span class="val" id="m-tube">—</span></div>
+    <div class="metric-row"><span>f/ratio (obj):</span><span class="val" id="m-fratio">—</span></div>
+    <div class="metric-row"><span>True FOV:</span><span class="val" id="m-fov">—</span></div>
+  </div>
+
+  <div id="view-controls">
+    <button id="zoom-in">＋</button>
+    <button id="zoom-out">－</button>
+    <button id="zoom-fit">Fit</button>
+  </div>
+
+  <div id="legend">
+    <div class="legend-title">Legend</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#5bc8ff"></span> Light rays</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#ffb347"></span> Focal pts · rotation handle</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#5fd39a"></span> Convergence / image</div>
+    <div class="legend-item"><span class="legend-dot" style="background:rgba(91,200,255,0.4)"></span> Lens / flat glass</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#c0c8d4"></span> Mirror</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#ff5b6b"></span> Stop / Filter</div>
+    <div style="margin-top:6px;" class="tip">Drag body=move · orange handle=rotate</div>
+  </div>
+
+  <div id="psf-inset">
+    <div class="psf-header">
+      <span>◎ PSF · Spot Diagram</span>
+      <button class="close-btn" id="psf-close">✕</button>
+    </div>
+    <canvas id="psf-canvas"></canvas>
+  </div>
+
+  <div id="rayfan-inset">
+    <div class="rayfan-header">
+      <span>◎ Ray Fan · Transverse Aberration</span>
+      <button class="close-btn" id="rayfan-close">✕</button>
+    </div>
+    <canvas id="rayfan-canvas"></canvas>
+  </div>
+
+  <div id="detector-strip">
+    <div class="detector-header">
+      <span>◎ Detector Intensity Profile</span>
+      <span id="detector-info">—</span>
+    </div>
+    <canvas id="detector-canvas"></canvas>
+  </div>
+</main>
+</div>
+<script>
+// =============================================================
+// OPTICAL RAY SIMULATOR — FULL ROTATABLE EDITION
+// =============================================================
+const $ = (id) => document.getElementById(id);
+const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+const DEG = Math.PI / 180;
+
+// Vector helpers
+const vAdd = (a, b) => ({ x: a.x + b.x, y: a.y + b.y });
+const vSub = (a, b) => ({ x: a.x - b.x, y: a.y - b.y });
+const vScale = (a, s) => ({ x: a.x * s, y: a.y * s });
+const vDot = (a, b) => a.x * b.x + a.y * b.y;
+const vLen = (a) => Math.hypot(a.x, a.y);
+const vNorm = (a) => { const L = vLen(a); return L > 0 ? { x: a.x / L, y: a.y / L } : { x: 0, y: 0 }; };
+const vRot = (a, ang) => ({ x: a.x * Math.cos(ang) - a.y * Math.sin(ang), y: a.x * Math.sin(ang) + a.y * Math.cos(ang) });
+const vPerp = (a) => ({ x: -a.y, y: a.x });
+
+function wavelengthToRGB(wl) {
+  let r = 0, g = 0, b = 0;
+  if (wl >= 380 && wl < 440) { r = -(wl - 440) / 60; g = 0; b = 1; }
+  else if (wl >= 440 && wl < 490) { r = 0; g = (wl - 440) / 50; b = 1; }
+  else if (wl >= 490 && wl < 510) { r = 0; g = 1; b = -(wl - 510) / 20; }
+  else if (wl >= 510 && wl < 580) { r = (wl - 510) / 70; g = 1; b = 0; }
+  else if (wl >= 580 && wl < 645) { r = 1; g = -(wl - 645) / 65; b = 0; }
+  else if (wl >= 645 && wl <= 780) { r = 1; g = 0; b = 0; }
+  let factor = 1;
+  if (wl < 420) factor = 0.3 + 0.7 * (wl - 380) / 40;
+  else if (wl > 700) factor = 0.3 + 0.7 * (780 - wl) / 80;
+  r = Math.round(255 * Math.pow(r * factor, 0.8));
+  g = Math.round(255 * Math.pow(g * factor, 0.8));
+  b = Math.round(255 * Math.pow(b * factor, 0.8));
+  return `rgb(${r},${g},${b})`;
+}
+
+// Cauchy-like dispersion (only if chromatic aberration is enabled)
+function dispersedIndex(baseN, wavelengthNm) {
+  if (!state.aberChromatic) return baseN;
+  if (baseN <= 1.0) return baseN;
+  const B = (baseN - 1.0) * 0.012;
+  const ref = 0.550;
+  const lam = wavelengthNm / 1000;
+  return baseN + B * (1 / (lam * lam) - 1 / (ref * ref));
+}
+
+// ---------- State ----------
+const state = {
+  viewMode: '2d', zoom: 1.0, panX: 0, panY: 0,
+  source: {
+    x: -400, y: 0, rotation: 0,
+    rays: 11, spread: 20,
+    spectrum: 'mono',           // 'mono', 'dispersion', 'white'
+    wavelength: 550,            // for mono
+    wlMin: 400, wlMax: 700, wlSteps: 9,  // for white
+    mode: 'infinity',
+    angle: 0, beamWidth: 200
+  },
+  medium: { n: 1.00 },
+  elements: [],
+  // Aberration toggles
+  aberChromatic: true,
+  aberSpherical: false,
+  // Display
+  showFocal: true, showAxis: true, showGrid: true,
+  showConvergence: true, showMetrics: true,
+  showPSF: false, showRayfan: false, showRuler: false,
+  // Interaction
+  dragging: null, dragOffset: { x: 0, y: 0 },
+  panning: false, panStart: { x: 0, y: 0 },
+  cam3D: { yaw: -0.5, pitch: 0.4, dist: 900 }, rot3D: false,
+  ruler: { p1: null, p2: null },
+  // Telescope barrel tubes: { axis:'h'|'v', start, end, center, radius }
+  tubes: []
+};
+
+let nextId = 1;
+let lastRays = [];
+
+// ---------- Element factory ----------
+function createElement(type) {
+  const defaults = {
+    'convex-lens':   { focal: 250, n: 1.52, aperture: 150, thickness: 14 },
+    'concave-lens':  { focal: -150, n: 1.52, aperture: 120, thickness: 14 },
+    'flat-glass':    { n: 1.52, thickness: 10, aperture: 120 },
+    'flat-mirror':   { aperture: 140 },
+    'convex-mirror': { focal: -120, aperture: 140 },
+    'concave-mirror':{ focal: 300, aperture: 200 },
+    'aperture-stop': { aperture: 160, holeSize: 80 },
+    'filter':        { aperture: 200, centerWL: 550, bandwidth: 40 },
+    'detector':      { aperture: 160 }
+  };
+  const d = defaults[type];
+  const el = {
+    id: nextId++, type, x: 0, y: 0, rotation: 0, locked: false, ...d
+  };
+  const existingXs = state.elements.map(e => e.x);
+  el.x = existingXs.length === 0 ? 0 : Math.max(...existingXs) + 120;
+  state.elements.push(el);
+  return el;
+}
+
+function removeElement(id) {
+  state.elements = state.elements.filter(e => e.id !== id);
+  render();
+  renderElementList();
+}
+
+// ---------- Geometry ----------
+function elementAxis(e) {
+  const r = (e.rotation || 0) * DEG;
+  return { x: Math.cos(r), y: Math.sin(r) };
+}
+
+// Ray-plane intersection, then aperture check
+function raySegmentIntersect(origin, dir, element) {
+  const N = elementAxis(element);
+  const T = vPerp(N);
+  const P = { x: element.x, y: element.y };
+  const denom = vDot(dir, N);
+  if (Math.abs(denom) < 1e-9) return null;
+  const t = vDot(vSub(P, origin), N) / denom;
+  if (t < 1e-4) return null;
+  const hit = vAdd(origin, vScale(dir, t));
+  const local = vDot(vSub(hit, P), T);
+  if (Math.abs(local) > element.aperture / 2) return null;
+  return { t, hit, localY: local, normal: N, tangent: T };
+}
+
+function rotationHandlePos(e) {
+  const axis = elementAxis(e);
+  const dist = (e.aperture / 2) + 25;
+  return { x: e.x + axis.x * dist, y: e.y + axis.y * dist };
+}
+
+// ---------- Ray generation ----------
+function generateRays() {
+  const rays = [];
+  const src = state.source;
+  const n = Math.max(1, src.rays | 0);
+  const spread = src.spread * DEG;
+  const srcRot = (src.rotation || 0) * DEG;
+
+  // Build wavelength list based on spectrum mode
+  let wavelengths = [];
+  if (src.spectrum === 'mono') {
+    wavelengths.push({ wl: src.wavelength, col: wavelengthToRGB(src.wavelength) });
+  } else if (src.spectrum === 'dispersion') {
+    wavelengths.push({ wl: 450, col: wavelengthToRGB(450) });
+    wavelengths.push({ wl: 550, col: wavelengthToRGB(550) });
+    wavelengths.push({ wl: 650, col: wavelengthToRGB(650) });
+  } else if (src.spectrum === 'white') {
+    const steps = clamp(src.wlSteps | 0, 3, 15);
+    for (let i = 0; i < steps; i++) {
+      const t = i / (steps - 1);
+      const wl = src.wlMin + (src.wlMax - src.wlMin) * t;
+      wavelengths.push({ wl, col: wavelengthToRGB(wl) });
+    }
+  }
+
+  const minElX = state.elements.length > 0 ? Math.min(...state.elements.map(e => e.x)) : 0;
+
+  for (const w of wavelengths) {
+    for (let i = 0; i < n; i++) {
+      const t = (n === 1) ? 0.5 : i / (n - 1);
+      let ox, oy, dx, dy;
+      if (src.mode === 'infinity') {
+        const ang = src.angle * DEG;
+        dx = Math.cos(ang); dy = Math.sin(ang);
+        const startX = minElX - 400;
+        const offset = (t - 0.5) * src.beamWidth;
+        ox = startX + (-dy) * offset;
+        oy = 0 + dx * offset;
+        const shiftT = (startX - ox) / dx;
+        ox = ox + dx * shiftT;
+        oy = oy + dy * shiftT;
+      } else if (src.mode === 'point') {
+        const ang = -spread / 2 + spread * t;
+        const baseDir = { x: Math.cos(ang), y: Math.sin(ang) };
+        const rotated = vRot(baseDir, srcRot);
+        dx = rotated.x; dy = rotated.y;
+        ox = src.x; oy = src.y;
+      } else if (src.mode === 'parallel') {
+        const d0 = vRot({ x: 1, y: 0 }, srcRot);
+        const perp = vPerp(d0);
+        dx = d0.x; dy = d0.y;
+        const offset = (t - 0.5) * 200;
+        ox = src.x + perp.x * offset;
+        oy = src.y + perp.y * offset;
+      } else {
+        const ang = -spread / 2 + spread * t;
+        const baseDir = { x: Math.cos(ang), y: Math.sin(ang) };
+        const rotated = vRot(baseDir, srcRot);
+        dx = rotated.x; dy = rotated.y;
+        ox = src.x; oy = src.y;
+      }
+      rays.push({
+        origin: { x: ox, y: oy },
+        dir: vNorm({ x: dx, y: dy }),
+        wavelength: w.wl, color: w.col,
+        path: [{ x: ox, y: oy }]
+      });
+    }
+  }
+  return rays;
+}
+
+// Snell refraction
+function refract(dir, N, n1, n2) {
+  let n = { ...N };
+  let cosi = -vDot(n, dir);
+  if (cosi < 0) { cosi = -cosi; n = vScale(n, -1); }
+  const eta = n1 / n2;
+  const k = 1 - eta * eta * (1 - cosi * cosi);
+  if (k < 0) return null;
+  return vNorm(vAdd(vScale(dir, eta), vScale(n, eta * cosi - Math.sqrt(k))));
+}
+
+// Filter transmission check: pass if wavelength within [center - bw/2, center + bw/2]
+function filterPasses(element, wavelength) {
+  const lo = element.centerWL - element.bandwidth / 2;
+  const hi = element.centerWL + element.bandwidth / 2;
+  return wavelength >= lo && wavelength <= hi;
+}
+
+// Tube/barrel clipping: returns smallest t at which ray exits any tube, or null
+function tubeClipT(origin, dir, maxT) {
+  let best = null;
+  for (const tb of state.tubes) {
+    if (tb.axis === 'h') {
+      // Horizontal tube: active for x in [start, end], |y - center| < radius
+      // Find t range where x is inside tube
+      if (Math.abs(dir.x) < 1e-9) {
+        // Nearly horizontal ray: check if y is outside tube at start
+        if (Math.abs(origin.y - tb.center) > tb.radius) {
+          if (origin.x >= tb.start && origin.x <= tb.end && (best === null || 0 < best)) best = 0;
+        }
+        continue;
+      }
+      const tA = (tb.start - origin.x) / dir.x;
+      const tB = (tb.end   - origin.x) / dir.x;
+      const tIn = Math.max(0, Math.min(tA, tB));
+      const tOut = Math.min(maxT, Math.max(tA, tB));
+      if (tIn > tOut) continue;
+      // y(t) = origin.y + dir.y * t; check upper and lower walls
+      for (const sign of [1, -1]) {
+        const wallY = tb.center + sign * tb.radius;
+        if (Math.abs(dir.y) < 1e-9) continue;
+        const t = (wallY - origin.y) / dir.y;
+        if (t < tIn - 1e-3 || t > tOut + 1e-3) continue;
+        const xAtT = origin.x + dir.x * t;
+        if (xAtT < tb.start || xAtT > tb.end) continue;
+        if (t > 1e-3 && t < maxT && (best === null || t < best)) best = t;
+      }
+    } else if (tb.axis === 'v') {
+      // Vertical tube: active for y in [start, end], |x - center| < radius
+      if (Math.abs(dir.y) < 1e-9) continue;
+      const tA = (tb.start - origin.y) / dir.y;
+      const tB = (tb.end   - origin.y) / dir.y;
+      const tIn = Math.max(0, Math.min(tA, tB));
+      const tOut = Math.min(maxT, Math.max(tA, tB));
+      if (tIn > tOut) continue;
+      for (const sign of [1, -1]) {
+        const wallX = tb.center + sign * tb.radius;
+        if (Math.abs(dir.x) < 1e-9) continue;
+        const t = (wallX - origin.x) / dir.x;
+        if (t < tIn - 1e-3 || t > tOut + 1e-3) continue;
+        const yAtT = origin.y + dir.y * t;
+        if (yAtT < tb.start || yAtT > tb.end) continue;
+        if (t > 1e-3 && t < maxT && (best === null || t < best)) best = t;
+      }
+    }
+  }
+  return best;
+}
+
+// ---------- Ray tracing ----------
+function traceRays(rays) {
+  for (const ray of rays) {
+    let origin = { ...ray.origin };
+    let dir = { ...ray.dir };
+    ray.blocked = false;
+    ray.detectorHits = [];
+    const MAX_BOUNCES = 15;
+
+    for (let bounce = 0; bounce < MAX_BOUNCES; bounce++) {
+      let best = null;
+      for (const e of state.elements) {
+        const r = raySegmentIntersect(origin, dir, e);
+        if (r && (!best || r.t < best.info.t)) best = { element: e, info: r };
+      }
+      if (!best) break;
+
+      // Tube/barrel clipping: block ray if it exits tube walls before reaching element
+      if (state.tubes.length > 0) {
+        const clipT = tubeClipT(origin, dir, best.info.t);
+        if (clipT !== null) {
+          const clipPt = vAdd(origin, vScale(dir, clipT));
+          ray.path.push({ ...clipPt });
+          ray.blocked = true;
+          break;
+        }
+      }
+
+      const e = best.element;
+      const info = best.info;
+
+      origin = { ...info.hit };
+      ray.path.push({ ...origin });
+
+      if (e.type === 'detector') {
+        ray.detectorHits.push({ detectorId: e.id, x: origin.x, y: origin.y, localY: info.localY });
+        origin = vAdd(origin, vScale(dir, 0.01));
+        continue;
+      }
+
+      if (e.type === 'aperture-stop') {
+        if (Math.abs(info.localY) > e.holeSize / 2) { ray.blocked = true; break; }
+        origin = vAdd(origin, vScale(dir, 0.01));
+        continue;
+      }
+
+      if (e.type === 'filter') {
+        if (!filterPasses(e, ray.wavelength)) { ray.blocked = true; break; }
+        origin = vAdd(origin, vScale(dir, 0.01));
+        continue;
+      }
+
+      if (e.type === 'flat-mirror') {
+        const d_dot_n = vDot(dir, info.normal);
+        // passThrough: rays from back side (denom<0) pass through instead of reflecting
+        // Needed for Newtonian diagonal: incoming beam passes through, primary-reflected beam reflects
+        if (e.passThrough && d_dot_n < 0) {
+          origin = vAdd(origin, vScale(dir, 0.01));
+          continue;
+        }
+        dir = vNorm(vSub(dir, vScale(info.normal, 2 * d_dot_n)));
+        origin = vAdd(origin, vScale(dir, 0.01));
+        continue;
+      }
+
+      if (e.type === 'flat-glass') {
+        const N = info.normal;
+        const nAmb = state.medium.n;
+        const nGlass = dispersedIndex(e.n, ray.wavelength);
+        const newDir = refract(dir, N, nAmb, nGlass);
+        if (!newDir) { ray.blocked = true; break; }
+        const P2 = vAdd({ x: e.x, y: e.y }, vScale(N, e.thickness));
+        const denom2 = vDot(newDir, N);
+        if (Math.abs(denom2) < 1e-9) { ray.blocked = true; break; }
+        const t2 = vDot(vSub(P2, origin), N) / denom2;
+        if (t2 < 0) { ray.blocked = true; break; }
+        const exit = vAdd(origin, vScale(newDir, t2));
+        ray.path.push({ ...exit });
+        origin = exit;
+        const newDir2 = refract(newDir, N, nGlass, nAmb);
+        if (!newDir2) { ray.blocked = true; break; }
+        dir = newDir2;
+        origin = vAdd(origin, vScale(dir, 0.01));
+        continue;
+      }
+
+      if (e.type === 'convex-lens' || e.type === 'concave-lens') {
+        const nL = dispersedIndex(e.n, ray.wavelength);
+        const nM = state.medium.n;
+        const ratio = (nL - 1) / (nL / nM - 1);
+        let effF = e.focal;
+        if (isFinite(ratio) && ratio !== 0) effF = e.focal * ratio;
+
+        // Spherical aberration: rays hitting at height y focus shorter by ~ (y/aperture)^2 * factor
+        // Classic Seidel: 1/f'(y) = 1/f + (y^2) * SA_coef
+        // We use a simple automatic model scaled by (y / (aperture/2))^2
+        if (state.aberSpherical && e.focal !== 0) {
+          const normY = info.localY / (e.aperture / 2);
+          // Stronger SA for shorter focal ratios (typical behavior). factor tuned empirically.
+          const fRatio = Math.abs(e.focal) / e.aperture;
+          const saStrength = 0.08 / Math.max(1.5, fRatio);  // smaller f/# => more SA
+          const saFactor = 1 - saStrength * normY * normY;
+          effF = effF * saFactor;
+        }
+
+        const N = info.normal, T = info.tangent;
+        const y = info.localY;
+        const axisComp = vDot(dir, N);
+        const tanComp  = vDot(dir, T);
+        const signAxis = Math.sign(axisComp) || 1;
+        const absAxis  = Math.abs(axisComp);
+        const slope = tanComp / absAxis;
+        const newSlope = slope - y / effF;
+        const worldDir = vAdd(vScale(N, signAxis), vScale(T, newSlope));
+        dir = vNorm(worldDir);
+        origin = vAdd(origin, vScale(dir, 0.01));
+        continue;
+      }
+
+      if (e.type === 'convex-mirror' || e.type === 'concave-mirror') {
+        // One-sided mirror: block rays from the back face
+        // (e.g. Cassegrain secondary blocks initial incoming beam = central obstruction)
+        if (e.oneSided) {
+          const dn = vDot(dir, info.normal);
+          if (dn > 0) {
+            // Ray hitting back of mirror → central obstruction, block it
+            ray.path.push({ ...info.hit });
+            ray.blocked = true; break;
+          }
+        }
+        // Central hole (Cassegrain primary): pass through if within hole radius
+        if (e.centralHole && Math.abs(info.localY) < e.centralHole / 2) {
+          origin = vAdd(origin, vScale(dir, 0.01));
+          continue;
+        }
+        let effF = e.focal;
+        if (state.aberSpherical && e.focal !== 0) {
+          const normY = info.localY / (e.aperture / 2);
+          const fRatio = Math.abs(e.focal) / e.aperture;
+          const saStrength = 0.08 / Math.max(1.5, fRatio);
+          effF = effF * (1 - saStrength * normY * normY);
+        }
+        const N = info.normal, T = info.tangent;
+        const y = info.localY;
+        const d_dot_n = vDot(dir, N);
+        let reflected = vSub(dir, vScale(N, 2 * d_dot_n));
+        const axisComp = vDot(reflected, N);
+        const tanComp  = vDot(reflected, T);
+        const signAxis = Math.sign(axisComp) || 1;
+        const slope = tanComp / Math.abs(axisComp);
+        const newSlope = slope - y / effF;
+        const worldDir = vAdd(vScale(N, signAxis), vScale(T, newSlope));
+        dir = vNorm(worldDir);
+        origin = vAdd(origin, vScale(dir, 0.01));
+        continue;
+      }
+    }
+
+    const extend = 4000;
+    ray.path.push({ x: origin.x + dir.x * extend, y: origin.y + dir.y * extend });
+    ray.finalDir = { ...dir };
+    ray.finalPoint = { ...origin };
+  }
+  return rays;
+}
+
+function findConvergence(rays) {
+  if (rays.length < 2) return null;
+  // Use a representative wavelength (center of spectrum) for convergence test
+  let wl;
+  if (state.source.spectrum === 'mono') wl = state.source.wavelength;
+  else if (state.source.spectrum === 'dispersion') wl = 550;
+  else wl = (state.source.wlMin + state.source.wlMax) / 2;
+  // Find nearest actually-emitted wavelength
+  const emitted = [...new Set(rays.map(r => r.wavelength))];
+  if (emitted.length === 0) return null;
+  let closestWL = emitted[0];
+  for (const e of emitted) if (Math.abs(e - wl) < Math.abs(closestWL - wl)) closestWL = e;
+
+  const group = rays.filter(r => r.wavelength === closestWL && r.finalDir && !r.blocked);
+  if (group.length < 2) return null;
+  let Axx = 0, Axy = 0, Ayy = 0, bx = 0, by = 0;
+  for (const r of group) {
+    const px = r.finalPoint.x, py = r.finalPoint.y;
+    const dx = r.finalDir.x, dy = r.finalDir.y;
+    const mxx = 1 - dx * dx;
+    const mxy = -dx * dy;
+    const myy = 1 - dy * dy;
+    Axx += mxx; Axy += mxy; Ayy += myy;
+    bx += mxx * px + mxy * py;
+    by += mxy * px + myy * py;
+  }
+  const det = Axx * Ayy - Axy * Axy;
+  if (Math.abs(det) < 1e-6) return null;
+  const qx = (Ayy * bx - Axy * by) / det;
+  const qy = (Axx * by - Axy * bx) / det;
+  let err = 0;
+  for (const r of group) {
+    const vx = qx - r.finalPoint.x, vy = qy - r.finalPoint.y;
+    const t = vx * r.finalDir.x + vy * r.finalDir.y;
+    const ex = vx - t * r.finalDir.x;
+    const ey = vy - t * r.finalDir.y;
+    err += Math.hypot(ex, ey);
+  }
+  err /= group.length;
+  return { x: qx, y: qy, err };
+}
+
+function computeMetrics() {
+  const optical = state.elements.filter(e =>
+    ['convex-lens','concave-lens','convex-mirror','concave-mirror'].includes(e.type)
+  ).sort((a, b) => a.x - b.x);
+  const m = { fObj: null, fEye: null, mag: null, tube: null, fRatio: null, fov: null };
+  if (optical.length >= 2) {
+    const obj = optical[0], eye = optical[optical.length - 1];
+    m.fObj = obj.focal; m.fEye = eye.focal;
+    if (eye.focal !== 0) m.mag = Math.abs(obj.focal / eye.focal);
+    m.tube = Math.hypot(eye.x - obj.x, eye.y - obj.y);
+    if (obj.aperture > 0) m.fRatio = Math.abs(obj.focal) / obj.aperture;
+    if (m.mag) m.fov = 50 / m.mag;
+  } else if (optical.length === 1) {
+    m.fObj = optical[0].focal;
+    if (optical[0].aperture > 0) m.fRatio = Math.abs(optical[0].focal) / optical[0].aperture;
+  }
+  return m;
+}
+
+function updateMetricsHUD() {
+  const m = computeMetrics();
+  const show = state.showMetrics && state.elements.filter(e =>
+    ['convex-lens','concave-lens','convex-mirror','concave-mirror'].includes(e.type)
+  ).length > 0;
+  $('metrics').style.display = show ? 'block' : 'none';
+  if (!show) return;
+  $('m-fobj').textContent = m.fObj !== null ? m.fObj.toFixed(0) + ' mm' : '—';
+  $('m-feye').textContent = m.fEye !== null ? m.fEye.toFixed(0) + ' mm' : '—';
+  $('m-mag').textContent = m.mag !== null ? m.mag.toFixed(1) + '×' : '—';
+  $('m-tube').textContent = m.tube !== null ? m.tube.toFixed(0) + ' mm' : '—';
+  $('m-fratio').textContent = m.fRatio !== null ? 'f/' + m.fRatio.toFixed(1) : '—';
+  $('m-fov').textContent = m.fov !== null ? m.fov.toFixed(2) + '°' : '—';
+}
+// ================ 2D RENDERING ================
+const canvas2d = $('canvas2d');
+const ctx = canvas2d.getContext('2d');
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas2d.clientWidth, h = canvas2d.clientHeight;
+  canvas2d.width = w * dpr; canvas2d.height = h * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const c3 = $('canvas3d');
+  c3.width = c3.clientWidth * dpr; c3.height = c3.clientHeight * dpr;
+  for (const id of ['psf-canvas', 'rayfan-canvas', 'detector-canvas']) {
+    const c = $(id);
+    if (c && c.clientWidth > 0) {
+      c.width = c.clientWidth * dpr; c.height = c.clientHeight * dpr;
+    }
+  }
+}
+
+function W2S(x, y) {
+  const w = canvas2d.clientWidth, h = canvas2d.clientHeight;
+  return { x: w / 2 + state.panX + x * state.zoom, y: h / 2 + state.panY + y * state.zoom };
+}
+function S2W(sx, sy) {
+  const w = canvas2d.clientWidth, h = canvas2d.clientHeight;
+  return { x: (sx - w / 2 - state.panX) / state.zoom, y: (sy - h / 2 - state.panY) / state.zoom };
+}
+
+function drawGrid() {
+  if (!state.showGrid) return;
+  const w = canvas2d.clientWidth, h = canvas2d.clientHeight;
+  const step = 50 * state.zoom;
+  if (step < 8) return;
+  ctx.strokeStyle = 'rgba(42,52,65,0.4)'; ctx.lineWidth = 1;
+  const center = W2S(0, 0);
+  const startX = ((center.x % step) + step) % step;
+  const startY = ((center.y % step) + step) % step;
+  ctx.beginPath();
+  for (let x = startX; x < w; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+  for (let y = startY; y < h; y += step) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+  ctx.stroke();
+  const majorStep = step * 5;
+  if (majorStep < 80) return;
+  ctx.strokeStyle = 'rgba(42,52,65,0.8)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  const sxM = ((center.x % majorStep) + majorStep) % majorStep;
+  const syM = ((center.y % majorStep) + majorStep) % majorStep;
+  for (let x = sxM; x < w; x += majorStep) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+  for (let y = syM; y < h; y += majorStep) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+  ctx.stroke();
+}
+
+function drawAxis() {
+  if (!state.showAxis) return;
+  const w = canvas2d.clientWidth;
+  const y0 = W2S(0, 0).y;
+  ctx.strokeStyle = 'rgba(138,149,165,0.4)'; ctx.lineWidth = 1;
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath();
+  ctx.moveTo(0, y0); ctx.lineTo(w, y0);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawElements() {
+  for (const e of state.elements) {
+    ctx.save();
+    const pos = W2S(e.x, e.y);
+    ctx.translate(pos.x, pos.y);
+    ctx.rotate((e.rotation || 0) * DEG);
+    const halfA = (e.aperture / 2) * state.zoom;
+    if (e.type === 'convex-lens' || e.type === 'concave-lens') drawLensLocal(e, halfA);
+    else if (e.type === 'flat-glass') drawFlatGlassLocal(e, halfA);
+    else if (e.type === 'flat-mirror') drawFlatMirrorLocal(e, halfA);
+    else if (e.type === 'convex-mirror' || e.type === 'concave-mirror') drawCurvedMirrorLocal(e, halfA);
+    else if (e.type === 'aperture-stop') drawApertureStopLocal(e, halfA);
+    else if (e.type === 'filter') drawFilterLocal(e, halfA);
+    else if (e.type === 'detector') drawDetectorLocal(e, halfA);
+    ctx.restore();
+
+    // Focal points
+    if (state.showFocal && e.focal && ['convex-lens','concave-lens','convex-mirror','concave-mirror'].includes(e.type)) {
+      const axis = elementAxis(e);
+      const f = Math.abs(e.focal);
+      const F1 = { x: e.x - axis.x * f, y: e.y - axis.y * f };
+      const F2 = { x: e.x + axis.x * f, y: e.y + axis.y * f };
+      const s1 = W2S(F1.x, F1.y);
+      const s2 = W2S(F2.x, F2.y);
+      ctx.fillStyle = '#ffb347';
+      ctx.beginPath();
+      ctx.arc(s1.x, s1.y, 3.5, 0, Math.PI * 2);
+      ctx.arc(s2.x, s2.y, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,179,71,0.9)';
+      ctx.font = '11px Arial';
+      ctx.fillText('F', s1.x + 6, s1.y - 6);
+      ctx.fillText("F'", s2.x + 6, s2.y - 6);
+    }
+
+    // Rotation handle
+    if (!e.locked) {
+      const rh = rotationHandlePos(e);
+      const rhS = W2S(rh.x, rh.y);
+      const cS = W2S(e.x, e.y);
+      ctx.strokeStyle = 'rgba(255,179,71,0.5)';
+      ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cS.x, cS.y); ctx.lineTo(rhS.x, rhS.y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#ffb347';
+      ctx.strokeStyle = '#0a0e14';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(rhS.x, rhS.y, 6, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+    }
+
+    // Label
+    const labelMap = {
+      'convex-lens': 'CONVEX LENS', 'concave-lens': 'CONCAVE LENS',
+      'flat-glass': 'FLAT GLASS',
+      'flat-mirror': 'FLAT MIRROR',
+      'convex-mirror': 'CONVEX MIRROR', 'concave-mirror': 'CONCAVE MIRROR',
+      'aperture-stop': 'APERTURE STOP', 'filter': 'FILTER',
+      'detector': 'DETECTOR'
+    };
+    let label = `#${e.id} · ${labelMap[e.type]}`;
+    if (['convex-lens','concave-lens','convex-mirror','concave-mirror'].includes(e.type)) {
+      label += ` · f=${e.focal}`;
+    }
+    if (e.type === 'filter') {
+      label += ` · ${e.centerWL}±${e.bandwidth/2}nm`;
+    }
+    if (e.rotation) label += ` · ${e.rotation.toFixed(0)}°`;
+    ctx.fillStyle = 'rgba(228,232,238,0.75)';
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'center';
+    const labelPos = W2S(e.x, e.y - e.aperture / 2 - 15);
+    ctx.fillText(label, labelPos.x, labelPos.y);
+    if (e.locked) {
+      ctx.fillStyle = '#ffb347';
+      const lp2 = W2S(e.x, e.y + e.aperture / 2 + 20);
+      ctx.fillText('🔒', lp2.x, lp2.y);
+    }
+    ctx.textAlign = 'left';
+  }
+}
+
+function drawLensLocal(e, halfA) {
+  const isConvex = e.type === 'convex-lens';
+  const thick = (e.thickness || 14) * state.zoom * 0.5;
+  ctx.fillStyle = 'rgba(91,200,255,0.18)';
+  ctx.strokeStyle = '#5bc8ff'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  if (isConvex) {
+    ctx.moveTo(0, -halfA);
+    ctx.quadraticCurveTo(thick * 2, 0, 0, halfA);
+    ctx.quadraticCurveTo(-thick * 2, 0, 0, -halfA);
+  } else {
+    const c = thick;
+    ctx.moveTo(-c, -halfA); ctx.lineTo(c, -halfA);
+    ctx.quadraticCurveTo(-c * 0.5, 0, c, halfA);
+    ctx.lineTo(-c, halfA);
+    ctx.quadraticCurveTo(c * 0.5, 0, -c, -halfA);
+  }
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+}
+
+function drawFlatGlassLocal(e, halfA) {
+  const thick = e.thickness * state.zoom;
+  ctx.fillStyle = 'rgba(91,200,255,0.12)';
+  ctx.strokeStyle = '#5bc8ff'; ctx.lineWidth = 1.2;
+  ctx.fillRect(0, -halfA, thick, halfA * 2);
+  ctx.strokeRect(0, -halfA, thick, halfA * 2);
+  ctx.strokeStyle = 'rgba(91,200,255,0.35)'; ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  for (let y = -halfA + 6; y < halfA; y += 10) {
+    ctx.moveTo(1, y); ctx.lineTo(thick - 1, y - 4);
+  }
+  ctx.stroke();
+}
+
+function drawFlatMirrorLocal(e, halfA) {
+  // Reflective side = +local-X (front face). Hatching on -X (back).
+  ctx.strokeStyle = '#c0c8d4'; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(0, -halfA); ctx.lineTo(0, halfA);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(192,200,212,0.5)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let y = -halfA; y <= halfA; y += 5) {
+    ctx.moveTo(-1, y); ctx.lineTo(-8, y + 5);
+  }
+  ctx.stroke();
+}
+
+function drawCurvedMirrorLocal(e, halfA) {
+  const isConvex = e.type === 'convex-mirror';
+  const halfHole = e.centralHole ? (e.centralHole / 2) * state.zoom : 0;
+  ctx.strokeStyle = '#c0c8d4'; ctx.lineWidth = 2.5;
+  if (halfHole > 0) {
+    // Draw two arcs (upper and lower halves) with gap at center
+    ctx.beginPath();
+    if (isConvex) {
+      ctx.moveTo(6, halfHole);
+      ctx.quadraticCurveTo(-12 * (halfA - halfHole) / halfA, (halfA + halfHole) / 2, 6, halfA);
+    } else {
+      ctx.moveTo(-6, halfHole);
+      ctx.quadraticCurveTo(12 * (halfA - halfHole) / halfA, (halfA + halfHole) / 2, -6, halfA);
+    }
+    ctx.stroke();
+    ctx.beginPath();
+    if (isConvex) {
+      ctx.moveTo(6, -halfHole);
+      ctx.quadraticCurveTo(-12 * (halfA - halfHole) / halfA, -(halfA + halfHole) / 2, 6, -halfA);
+    } else {
+      ctx.moveTo(-6, -halfHole);
+      ctx.quadraticCurveTo(12 * (halfA - halfHole) / halfA, -(halfA + halfHole) / 2, -6, -halfA);
+    }
+    ctx.stroke();
+    // Draw central hole marker (dashed gap)
+    ctx.strokeStyle = 'rgba(91,200,255,0.5)'; ctx.lineWidth = 1.2;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(0, -halfHole); ctx.lineTo(0, halfHole);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Hatching only on solid parts
+    ctx.strokeStyle = 'rgba(192,200,212,0.5)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let y = halfHole + 2; y <= halfA; y += 5) {
+      ctx.moveTo(-2, y); ctx.lineTo(-10, y + 6);
+      ctx.moveTo(-2, -y); ctx.lineTo(-10, -y + 6);
+    }
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    if (isConvex) {
+      ctx.moveTo(6, -halfA);
+      ctx.quadraticCurveTo(-12, 0, 6, halfA);
+    } else {
+      ctx.moveTo(-6, -halfA);
+      ctx.quadraticCurveTo(12, 0, -6, halfA);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(192,200,212,0.5)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let y = -halfA; y <= halfA; y += 5) {
+      ctx.moveTo(-2, y); ctx.lineTo(-10, y + 6);
+    }
+    ctx.stroke();
+  }
+}
+
+function drawApertureStopLocal(e, halfA) {
+  const halfHole = (e.holeSize / 2) * state.zoom;
+  ctx.strokeStyle = '#ff5b6b';
+  ctx.fillStyle = 'rgba(255,91,107,0.25)';
+  ctx.lineWidth = 2;
+  ctx.fillRect(-5, -halfA, 10, halfA - halfHole);
+  ctx.fillRect(-5, halfHole, 10, halfA - halfHole);
+  ctx.strokeRect(-5, -halfA, 10, halfA - halfHole);
+  ctx.strokeRect(-5, halfHole, 10, halfA - halfHole);
+  ctx.beginPath();
+  ctx.moveTo(-8, -halfHole); ctx.lineTo(8, -halfHole);
+  ctx.moveTo(-8, halfHole); ctx.lineTo(8, halfHole);
+  ctx.stroke();
+}
+
+function drawFilterLocal(e, halfA) {
+  // Draw filter as a tinted rectangle using its passband color
+  const color = wavelengthToRGB(e.centerWL);
+  const thick = 6;
+  ctx.fillStyle = color.replace('rgb', 'rgba').replace(')', ',0.35)');
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.fillRect(-thick/2, -halfA, thick, halfA * 2);
+  ctx.strokeRect(-thick/2, -halfA, thick, halfA * 2);
+  // Diagonal band pattern
+  ctx.strokeStyle = color.replace('rgb', 'rgba').replace(')', ',0.8)');
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let y = -halfA; y < halfA; y += 8) {
+    ctx.moveTo(-thick/2, y); ctx.lineTo(thick/2, y + 4);
+  }
+  ctx.stroke();
+}
+
+function drawDetectorLocal(e, halfA) {
+  ctx.strokeStyle = '#5fd39a';
+  ctx.fillStyle = 'rgba(95,211,154,0.10)';
+  ctx.lineWidth = 2;
+  ctx.fillRect(-4, -halfA, 8, halfA * 2);
+  ctx.strokeRect(-4, -halfA, 8, halfA * 2);
+  ctx.strokeStyle = 'rgba(95,211,154,0.5)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let y = -halfA; y <= halfA; y += 8) {
+    ctx.moveTo(-3, y); ctx.lineTo(3, y);
+  }
+  ctx.stroke();
+}
+
+function drawRays(rays) {
+  // Reduce alpha when many rays (e.g. white light with many wavelengths)
+  const n = rays.length;
+  const baseAlpha = n > 50 ? 0.5 : (n > 20 ? 0.7 : 0.85);
+  for (const ray of rays) {
+    ctx.strokeStyle = ray.color;
+    ctx.globalAlpha = ray.blocked ? 0.2 : baseAlpha;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    for (let i = 0; i < ray.path.length; i++) {
+      const p = W2S(ray.path[i].x, ray.path[i].y);
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawSource() {
+  const src = state.source;
+  if (src.mode === 'infinity') {
+    const angle = src.angle * DEG;
+    const startX = (state.elements.length > 0 ? Math.min(...state.elements.map(e => e.x)) : 0) - 400;
+    const p = W2S(startX - 100 * Math.cos(angle), -100 * Math.sin(angle));
+    const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 20);
+    grad.addColorStop(0, 'rgba(255,240,200,0.95)');
+    grad.addColorStop(1, 'rgba(255,240,200,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 20, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff4d0';
+    ctx.beginPath();
+    const r1 = 5, r2 = 12;
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI / 4) - Math.PI / 2;
+      const r = (i % 2 === 0) ? r2 : r1;
+      const x = p.x + r * Math.cos(a), y = p.y + r * Math.sin(a);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,244,208,0.9)';
+    ctx.font = '10px Arial'; ctx.textAlign = 'center';
+    ctx.fillText('★ STAR AT ∞', p.x, p.y + 30);
+    ctx.fillText(`${src.angle.toFixed(1)}°`, p.x, p.y + 42);
+    ctx.textAlign = 'left';
+  } else {
+    const p = W2S(src.x, src.y);
+    const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 18);
+    grad.addColorStop(0, 'rgba(255,220,140,0.9)');
+    grad.addColorStop(1, 'rgba(255,220,140,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 18, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffe4a0';
+    ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill();
+    // Direction arrow
+    const ang = src.rotation * DEG;
+    const ax = Math.cos(ang), ay = Math.sin(ang);
+    ctx.strokeStyle = '#ffe4a0'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x + ax * 22, p.y + ay * 22);
+    const hx = p.x + ax * 22, hy = p.y + ay * 22;
+    const perp = { x: -ay, y: ax };
+    ctx.moveTo(hx, hy); ctx.lineTo(hx - ax * 6 + perp.x * 4, hy - ay * 6 + perp.y * 4);
+    ctx.moveTo(hx, hy); ctx.lineTo(hx - ax * 6 - perp.x * 4, hy - ay * 6 - perp.y * 4);
+    ctx.stroke();
+    // Rotation handle
+    const rhDist = 38;
+    const rhX = p.x + ax * rhDist, rhY = p.y + ay * rhDist;
+    ctx.strokeStyle = 'rgba(255,179,71,0.5)';
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y); ctx.lineTo(rhX, rhY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ffb347';
+    ctx.strokeStyle = '#0a0e14';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(rhX, rhY, 6, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,228,160,0.8)';
+    ctx.font = '10px Arial';
+    ctx.fillText('SOURCE', p.x + 10, p.y - 10);
+  }
+}
+
+function drawConvergence(rays) {
+  if (!state.showConvergence) return;
+  const conv = findConvergence(rays);
+  if (!conv || conv.err > 50) return;
+  const p = W2S(conv.x, conv.y);
+  ctx.strokeStyle = '#5fd39a'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(p.x - 12, p.y); ctx.lineTo(p.x + 12, p.y);
+  ctx.moveTo(p.x, p.y - 12); ctx.lineTo(p.x, p.y + 12);
+  ctx.stroke();
+  ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.stroke();
+
+  // Determine image orientation and magnification for finite sources
+  const src = state.source;
+  const isFinite = src.mode !== 'infinity';
+  if (isFinite && src.y !== undefined) {
+    // Trace two extreme-y rays to find image orientation
+    const okRays = rays.filter(r => !r.blocked && r.finalDir && r.finalPoint);
+    if (okRays.length >= 2) {
+      // Sort rays by their initial y position
+      const sorted = [...okRays].sort((a, b) => a.origin.y - b.origin.y);
+      const topRay = sorted[sorted.length - 1];
+      const botRay = sorted[0];
+      // Find where they arrive at the convergence x-plane
+      const avgDir = { x: 0, y: 0 };
+      for (const r of okRays) { avgDir.x += r.finalDir.x; avgDir.y += r.finalDir.y; }
+      const len = Math.hypot(avgDir.x, avgDir.y);
+      const planeN = { x: avgDir.x / len, y: avgDir.y / len };
+      const planeT = vPerp(planeN);
+      function hitAtFocal(ray) {
+        const denom = vDot(ray.finalDir, planeN);
+        if (Math.abs(denom) < 1e-8) return null;
+        const t = vDot(vSub(conv, ray.finalPoint), planeN) / denom;
+        const hit = vAdd(ray.finalPoint, vScale(ray.finalDir, t));
+        return vDot(vSub(hit, conv), planeT);
+      }
+      const topLateral = hitAtFocal(topRay);
+      const botLateral = hitAtFocal(botRay);
+      if (topLateral !== null && botLateral !== null) {
+        // If top ray ends lower than bottom ray → inverted
+        const inverted = topLateral < botLateral;
+        // Object size (spread in y) vs image size (spread at focal plane)
+        const objSize = Math.abs(topRay.origin.y - botRay.origin.y);
+        const imgSize = Math.abs(topLateral - botLateral);
+        const linMag = objSize > 0.1 ? imgSize / objSize : null;
+
+        // Draw info box
+        const infoX = p.x + 16, infoY = p.y - 12;
+        const label1 = `IMAGE (rms ${conv.err.toFixed(1)}mm)`;
+        const label2 = inverted ? '▼ INVERTED' : '▲ UPRIGHT';
+        const label3 = linMag !== null ? `|m| = ${linMag.toFixed(2)}×` : '';
+        ctx.font = '10px Arial';
+        const w1 = ctx.measureText(label1).width;
+        const w2 = ctx.measureText(label2).width;
+        const w3 = ctx.measureText(label3).width;
+        const bw = Math.max(w1, w2, w3) + 12;
+        const bh = label3 ? 46 : 34;
+        ctx.fillStyle = 'rgba(19,24,32,0.9)';
+        ctx.strokeStyle = '#5fd39a'; ctx.lineWidth = 1;
+        ctx.fillRect(infoX, infoY - bh + 8, bw, bh);
+        ctx.strokeRect(infoX, infoY - bh + 8, bw, bh);
+        ctx.fillStyle = '#5fd39a';
+        ctx.font = 'bold 10px Arial';
+        ctx.fillText(label1, infoX + 6, infoY - bh + 20);
+        ctx.fillStyle = inverted ? '#ff5b6b' : '#5bc8ff';
+        ctx.font = 'bold 11px Arial';
+        ctx.fillText(label2, infoX + 6, infoY - bh + 33);
+        if (label3) {
+          ctx.fillStyle = '#ffb347';
+          ctx.font = '10px Arial';
+          ctx.fillText(label3, infoX + 6, infoY - bh + 46);
+        }
+
+        // Draw small object arrow at source
+        const srcS = W2S(src.x, src.y);
+        const arrowH = 20;
+        ctx.strokeStyle = 'rgba(255,220,140,0.7)'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(srcS.x, srcS.y + arrowH/2);
+        ctx.lineTo(srcS.x, srcS.y - arrowH/2);
+        ctx.moveTo(srcS.x - 4, srcS.y - arrowH/2 + 5);
+        ctx.lineTo(srcS.x, srcS.y - arrowH/2);
+        ctx.lineTo(srcS.x + 4, srcS.y - arrowH/2 + 5);
+        ctx.stroke();
+
+        // Draw image arrow at convergence (inverted or upright)
+        const imgArrowH = Math.min(Math.max(10, arrowH * (linMag || 1)), 50);
+        const tipY = inverted ? p.y + imgArrowH/2 : p.y - imgArrowH/2;
+        const baseY = inverted ? p.y - imgArrowH/2 : p.y + imgArrowH/2;
+        ctx.strokeStyle = '#5fd39a'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(p.x, baseY); ctx.lineTo(p.x, tipY);
+        ctx.moveTo(p.x - 4, tipY + (inverted ? -5 : 5));
+        ctx.lineTo(p.x, tipY);
+        ctx.lineTo(p.x + 4, tipY + (inverted ? -5 : 5));
+        ctx.stroke();
+      }
+    }
+  } else {
+    // Infinity source: just label
+    ctx.fillStyle = '#5fd39a'; ctx.font = '10px Arial';
+    ctx.fillText(`FOCUS (rms ${conv.err.toFixed(1)}mm)`, p.x + 12, p.y + 4);
+  }
+}
+
+function drawTubes() {
+  if (!state.tubes || state.tubes.length === 0) return;
+  for (const tb of state.tubes) {
+    ctx.strokeStyle = 'rgba(55,75,95,0.85)'; ctx.lineWidth = 2.5;
+    ctx.setLineDash([]);
+    if (tb.axis === 'h') {
+      const pU1 = W2S(tb.start, tb.center - tb.radius);
+      const pU2 = W2S(tb.end,   tb.center - tb.radius);
+      const pL1 = W2S(tb.start, tb.center + tb.radius);
+      const pL2 = W2S(tb.end,   tb.center + tb.radius);
+      // Upper and lower walls
+      ctx.beginPath();
+      ctx.moveTo(pU1.x, pU1.y); ctx.lineTo(pU2.x, pU2.y);
+      ctx.moveTo(pL1.x, pL1.y); ctx.lineTo(pL2.x, pL2.y);
+      ctx.stroke();
+      // End caps
+      ctx.strokeStyle = 'rgba(55,75,95,0.5)'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(pU1.x, pU1.y); ctx.lineTo(pL1.x, pL1.y);
+      ctx.moveTo(pU2.x, pU2.y); ctx.lineTo(pL2.x, pL2.y);
+      ctx.stroke();
+    } else if (tb.axis === 'v') {
+      const pL1 = W2S(tb.center - tb.radius, tb.start);
+      const pL2 = W2S(tb.center - tb.radius, tb.end);
+      const pR1 = W2S(tb.center + tb.radius, tb.start);
+      const pR2 = W2S(tb.center + tb.radius, tb.end);
+      // Left and right walls
+      ctx.beginPath();
+      ctx.moveTo(pL1.x, pL1.y); ctx.lineTo(pL2.x, pL2.y);
+      ctx.moveTo(pR1.x, pR1.y); ctx.lineTo(pR2.x, pR2.y);
+      ctx.stroke();
+      // End caps
+      ctx.strokeStyle = 'rgba(55,75,95,0.5)'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(pL1.x, pL1.y); ctx.lineTo(pR1.x, pR1.y);
+      ctx.moveTo(pL2.x, pL2.y); ctx.lineTo(pR2.x, pR2.y);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawRuler() {
+  if (!state.showRuler) return;
+  const r = state.ruler;
+  if (!r.p1) return;
+  const p1 = W2S(r.p1.x, r.p1.y);
+  ctx.fillStyle = '#ffb347';
+  ctx.strokeStyle = '#ffb347'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(p1.x, p1.y, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,179,71,0.8)'; ctx.font = '10px Arial';
+  ctx.fillText('①', p1.x + 7, p1.y - 7);
+  if (r.p2) {
+    const p2 = W2S(r.p2.x, r.p2.y);
+    ctx.fillStyle = '#ffb347';
+    ctx.beginPath(); ctx.arc(p2.x, p2.y, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillText('②', p2.x + 7, p2.y - 7);
+    ctx.strokeStyle = '#ffb347'; ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+    ctx.setLineDash([]);
+    const dx = r.p2.x - r.p1.x, dy = r.p2.y - r.p1.y;
+    const dist = Math.hypot(dx, dy);
+    const angleDeg = Math.atan2(dy, dx) / DEG;
+    const angleFromH = ((angleDeg % 180) + 180) % 180;  // 0-180°
+    const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
+    const line1 = `${dist.toFixed(1)} mm`;
+    const line2 = `Δx=${dx.toFixed(0)}  Δy=${dy.toFixed(0)}  ∠=${angleFromH.toFixed(1)}°`;
+    ctx.font = '11px Arial';
+    const w1 = ctx.measureText(line1).width;
+    const w2 = ctx.measureText(line2).width;
+    const bw = Math.max(w1, w2) + 16;
+    ctx.fillStyle = 'rgba(19,24,32,0.92)';
+    ctx.strokeStyle = '#ffb347'; ctx.lineWidth = 1;
+    ctx.fillRect(mx - bw/2, my - 36, bw, 34);
+    ctx.strokeRect(mx - bw/2, my - 36, bw, 34);
+    ctx.fillStyle = '#ffb347';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 12px Arial';
+    ctx.fillText(line1, mx, my - 20);
+    ctx.font = '10px Arial';
+    ctx.fillStyle = 'rgba(255,179,71,0.8)';
+    ctx.fillText(line2, mx, my - 7);
+    ctx.textAlign = 'left';
+  } else {
+    ctx.fillStyle = 'rgba(255,179,71,0.6)'; ctx.font = '10px Arial';
+    ctx.fillText('Click 2nd point', p1.x + 10, p1.y + 4);
+  }
+}
+
+function render2D() {
+  const w = canvas2d.clientWidth, h = canvas2d.clientHeight;
+  ctx.fillStyle = '#05080c';
+  ctx.fillRect(0, 0, w, h);
+  drawGrid();
+  drawAxis();
+  const rays = traceRays(generateRays());
+  lastRays = rays;
+  drawTubes();
+  drawRays(rays);
+  drawElements();
+  drawSource();
+  drawConvergence(rays);
+  drawRuler();
+  updateHUD();
+  updateMetricsHUD();
+  updateInsets(rays);
+}
+// ================ 3D RENDERING ================
+const canvas3d = $('canvas3d');
+const ctx3 = canvas3d.getContext('2d');
+
+function project3D(x, y, z) {
+  const cy = Math.cos(state.cam3D.yaw), sy = Math.sin(state.cam3D.yaw);
+  const cp = Math.cos(state.cam3D.pitch), sp = Math.sin(state.cam3D.pitch);
+  let x1 = x * cy - z * sy;
+  let z1 = x * sy + z * cy;
+  let y1 = y;
+  let y2 = y1 * cp - z1 * sp;
+  let z2 = y1 * sp + z1 * cp;
+  const d = state.cam3D.dist;
+  const zc = z2 + d;
+  if (zc <= 1) return null;
+  const f = 800;
+  const w = canvas3d.clientWidth, h = canvas3d.clientHeight;
+  return { x: w / 2 + (x1 * f) / zc, y: h / 2 - (y2 * f) / zc, depth: zc };
+}
+
+function isAxiallySymmetric() {
+  if (state.source.mode === 'infinity' && state.source.angle !== 0) return false;
+  if (state.source.mode !== 'infinity' && state.source.rotation && state.source.rotation !== 0) return false;
+  for (const e of state.elements) {
+    if (e.rotation && e.rotation !== 0) return false;
+    if (e.y !== 0) return false;
+  }
+  return true;
+}
+
+function render3D() {
+  const w = canvas3d.clientWidth, h = canvas3d.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
+  ctx3.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx3.fillStyle = '#05080c';
+  ctx3.fillRect(0, 0, w, h);
+  ctx3.strokeStyle = 'rgba(138,149,165,0.3)';
+  ctx3.setLineDash([4, 4]); ctx3.lineWidth = 1;
+  ctx3.beginPath();
+  const a = project3D(-1500, 0, 0);
+  const b = project3D(1500, 0, 0);
+  if (a && b) { ctx3.moveTo(a.x, a.y); ctx3.lineTo(b.x, b.y); ctx3.stroke(); }
+  ctx3.setLineDash([]);
+  ctx3.strokeStyle = 'rgba(42,52,65,0.5)'; ctx3.lineWidth = 1;
+  ctx3.beginPath();
+  for (let i = -1000; i <= 1000; i += 100) {
+    const p1 = project3D(i, -200, -500);
+    const p2 = project3D(i, -200, 500);
+    if (p1 && p2) { ctx3.moveTo(p1.x, p1.y); ctx3.lineTo(p2.x, p2.y); }
+    const p3 = project3D(-1000, -200, i / 2);
+    const p4 = project3D(1000, -200, i / 2);
+    if (p3 && p4) { ctx3.moveTo(p3.x, p3.y); ctx3.lineTo(p4.x, p4.y); }
+  }
+  ctx3.stroke();
+
+  const rays = traceRays(generateRays());
+  lastRays = rays;
+  const axSym = isAxiallySymmetric();
+  const azimuths = axSym ? [0, Math.PI / 2, Math.PI, Math.PI * 3 / 2] : [0, Math.PI];
+  const baseAlpha = rays.length > 50 ? 0.35 : (rays.length > 20 ? 0.5 : 0.65);
+
+  for (const az of azimuths) {
+    const cos = Math.cos(az), sin = Math.sin(az);
+    for (const ray of rays) {
+      ctx3.globalAlpha = ray.blocked ? 0.15 : baseAlpha;
+      ctx3.strokeStyle = ray.color;
+      ctx3.lineWidth = 1;
+      ctx3.beginPath();
+      let started = false;
+      for (let i = 0; i < ray.path.length; i++) {
+        const p = ray.path[i];
+        const X = p.x, Y = p.y * cos, Z = p.y * sin;
+        const s = project3D(X, Y, Z);
+        if (!s) { started = false; continue; }
+        if (!started) { ctx3.moveTo(s.x, s.y); started = true; }
+        else ctx3.lineTo(s.x, s.y);
+      }
+      ctx3.stroke();
+    }
+  }
+  ctx3.globalAlpha = 1;
+
+  for (const e of state.elements) drawElement3D(e);
+
+  if (state.source.mode !== 'infinity') {
+    const src = project3D(state.source.x, state.source.y, 0);
+    if (src) {
+      const grad = ctx3.createRadialGradient(src.x, src.y, 0, src.x, src.y, 16);
+      grad.addColorStop(0, 'rgba(255,220,140,0.9)');
+      grad.addColorStop(1, 'rgba(255,220,140,0)');
+      ctx3.fillStyle = grad;
+      ctx3.beginPath(); ctx3.arc(src.x, src.y, 16, 0, Math.PI * 2); ctx3.fill();
+      ctx3.fillStyle = '#ffe4a0';
+      ctx3.beginPath(); ctx3.arc(src.x, src.y, 4, 0, Math.PI * 2); ctx3.fill();
+    }
+  }
+
+  if (state.showConvergence) {
+    const conv = findConvergence(rays);
+    if (conv && conv.err < 50) {
+      const p = project3D(conv.x, conv.y, 0);
+      if (p) {
+        ctx3.strokeStyle = '#5fd39a';
+        ctx3.lineWidth = 1.5;
+        ctx3.beginPath();
+        ctx3.moveTo(p.x - 8, p.y); ctx3.lineTo(p.x + 8, p.y);
+        ctx3.moveTo(p.x, p.y - 8); ctx3.lineTo(p.x, p.y + 8);
+        ctx3.stroke();
+        ctx3.beginPath();
+        ctx3.arc(p.x, p.y, 5, 0, Math.PI * 2);
+        ctx3.stroke();
+      }
+    }
+  }
+  if (!axSym) {
+    ctx3.fillStyle = 'rgba(255,179,71,0.8)';
+    ctx3.font = '10px Arial';
+    ctx3.fillText('⚠ Tilted system: 2D slice only', 14, h - 14);
+  }
+  updateHUD();
+  updateMetricsHUD();
+  updateInsets(rays);
+}
+
+function drawElement3D(e) {
+  const halfA = e.aperture / 2;
+  const segs = 48;
+  if (e.type.includes('lens') || e.type === 'flat-glass') {
+    ctx3.strokeStyle = '#5bc8ff';
+    ctx3.fillStyle = 'rgba(91,200,255,0.10)';
+  } else if (e.type.includes('mirror')) {
+    ctx3.strokeStyle = '#c0c8d4';
+    ctx3.fillStyle = 'rgba(192,200,212,0.08)';
+  } else if (e.type === 'aperture-stop') {
+    ctx3.strokeStyle = '#ff5b6b';
+    ctx3.fillStyle = 'rgba(255,91,107,0.10)';
+  } else if (e.type === 'filter') {
+    const col = wavelengthToRGB(e.centerWL);
+    ctx3.strokeStyle = col;
+    ctx3.fillStyle = col.replace('rgb', 'rgba').replace(')', ',0.15)');
+  } else if (e.type === 'detector') {
+    ctx3.strokeStyle = '#5fd39a';
+    ctx3.fillStyle = 'rgba(95,211,154,0.08)';
+  }
+  ctx3.lineWidth = 1.2;
+  const rot = (e.rotation || 0) * DEG;
+  const axis2D = { x: Math.cos(rot), y: Math.sin(rot) };
+  const tan2D  = { x: -axis2D.y, y: axis2D.x };
+  ctx3.beginPath();
+  for (let i = 0; i <= segs; i++) {
+    const th = (i / segs) * Math.PI * 2;
+    const ly = halfA * Math.cos(th);
+    const lz = halfA * Math.sin(th);
+    const X = e.x + ly * tan2D.x;
+    const Y = e.y + ly * tan2D.y;
+    const Z = lz;
+    const p = project3D(X, Y, Z);
+    if (!p) continue;
+    if (i === 0) ctx3.moveTo(p.x, p.y);
+    else ctx3.lineTo(p.x, p.y);
+  }
+  ctx3.closePath();
+  ctx3.fill();
+  ctx3.stroke();
+}
+
+// ================ INSETS ================
+function updateInsets(rays) {
+  $('psf-inset').style.display = state.showPSF ? 'block' : 'none';
+  $('rayfan-inset').style.display = state.showRayfan ? 'block' : 'none';
+  const hasDetector = state.elements.some(e => e.type === 'detector');
+  $('detector-strip').style.display = hasDetector ? 'block' : 'none';
+  if (state.showPSF) drawPSF(rays);
+  if (state.showRayfan) drawRayFan(rays);
+  if (hasDetector) drawDetectorProfile(rays);
+}
+
+function drawPSF(rays) {
+  const c = $('psf-canvas');
+  if (c.clientWidth === 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (c.width !== c.clientWidth * dpr) {
+    c.width = c.clientWidth * dpr; c.height = c.clientHeight * dpr;
+  }
+  const cx = c.getContext('2d');
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = c.clientWidth, h = c.clientHeight;
+  cx.fillStyle = '#05080c';
+  cx.fillRect(0, 0, w, h);
+  const conv = findConvergence(rays);
+  if (!conv) {
+    cx.fillStyle = '#8a95a5'; cx.font = '10px Arial';
+    cx.textAlign = 'center'; cx.fillText('No convergence', w/2, h/2);
+    return;
+  }
+  let avgDir = { x: 0, y: 0 };
+  const okRays = rays.filter(r => !r.blocked && r.finalDir);
+  if (okRays.length === 0) return;
+  for (const r of okRays) avgDir = vAdd(avgDir, r.finalDir);
+  avgDir = vNorm(avgDir);
+  const planeN = avgDir;
+  const planeT = vPerp(planeN);
+  const spots = [];
+  for (const r of okRays) {
+    const denom = vDot(r.finalDir, planeN);
+    if (Math.abs(denom) < 1e-8) continue;
+    const t = vDot(vSub(conv, r.finalPoint), planeN) / denom;
+    const hit = vAdd(r.finalPoint, vScale(r.finalDir, t));
+    const lateral = vDot(vSub(hit, conv), planeT);
+    spots.push({ y: lateral, color: r.color });
+  }
+  if (spots.length === 0) return;
+  const ymax = Math.max(0.5, ...spots.map(s => Math.abs(s.y)));
+  const scale = (Math.min(w, h) * 0.4) / ymax;
+  cx.strokeStyle = 'rgba(138,149,165,0.3)';
+  cx.lineWidth = 1; cx.setLineDash([3, 3]);
+  cx.beginPath();
+  cx.moveTo(w/2, 0); cx.lineTo(w/2, h);
+  cx.moveTo(0, h/2); cx.lineTo(w, h/2);
+  cx.stroke();
+  cx.setLineDash([]);
+  cx.strokeStyle = 'rgba(91,200,255,0.3)';
+  cx.beginPath();
+  cx.arc(w/2, h/2, scale * ymax * 0.5, 0, Math.PI * 2);
+  cx.stroke();
+  for (const s of spots) {
+    cx.fillStyle = s.color;
+    cx.globalAlpha = 0.7;
+    const px = w/2 + (Math.random() - 0.5) * 4;
+    const py = h/2 + s.y * scale;
+    cx.beginPath();
+    cx.arc(px, py, 2, 0, Math.PI * 2);
+    cx.fill();
+  }
+  cx.globalAlpha = 1;
+  cx.fillStyle = '#8a95a5';
+  cx.font = '9px Arial';
+  cx.textAlign = 'left';
+  cx.fillText(`RMS ${conv.err.toFixed(2)}mm`, 6, h - 6);
+  cx.textAlign = 'right';
+  cx.fillText(`±${ymax.toFixed(1)}mm`, w - 6, h - 6);
+}
+
+function drawRayFan(rays) {
+  const c = $('rayfan-canvas');
+  if (c.clientWidth === 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (c.width !== c.clientWidth * dpr) {
+    c.width = c.clientWidth * dpr; c.height = c.clientHeight * dpr;
+  }
+  const cx = c.getContext('2d');
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = c.clientWidth, h = c.clientHeight;
+  cx.fillStyle = '#05080c';
+  cx.fillRect(0, 0, w, h);
+  const conv = findConvergence(rays);
+  if (!conv) {
+    cx.fillStyle = '#8a95a5'; cx.font = '10px Arial';
+    cx.textAlign = 'center'; cx.fillText('No convergence', w/2, h/2);
+    return;
+  }
+  let avgDir = { x: 0, y: 0 };
+  const okRays = rays.filter(r => !r.blocked && r.finalDir);
+  if (okRays.length === 0) return;
+  for (const r of okRays) avgDir = vAdd(avgDir, r.finalDir);
+  avgDir = vNorm(avgDir);
+  const planeN = avgDir;
+  const planeT = vPerp(planeN);
+  const data = [];
+  for (const r of okRays) {
+    const denom = vDot(r.finalDir, planeN);
+    if (Math.abs(denom) < 1e-8) continue;
+    const t = vDot(vSub(conv, r.finalPoint), planeN) / denom;
+    const hit = vAdd(r.finalPoint, vScale(r.finalDir, t));
+    const lateral = vDot(vSub(hit, conv), planeT);
+    data.push({ pupilY: r.origin.y, dy: lateral, color: r.color });
+  }
+  if (data.length === 0) return;
+  const pupilMax = Math.max(...data.map(d => Math.abs(d.pupilY))) || 1;
+  const dyMax = Math.max(0.1, ...data.map(d => Math.abs(d.dy)));
+  cx.strokeStyle = 'rgba(138,149,165,0.3)';
+  cx.lineWidth = 1;
+  cx.beginPath();
+  cx.moveTo(10, h/2); cx.lineTo(w - 10, h/2);
+  cx.moveTo(w/2, 10); cx.lineTo(w/2, h - 10);
+  cx.stroke();
+  cx.fillStyle = '#8a95a5';
+  cx.font = '8px Arial';
+  cx.textAlign = 'left';
+  cx.fillText('ΔY (mm)', 4, 10);
+  cx.textAlign = 'right';
+  cx.fillText('pupil Y', w - 4, h/2 - 2);
+  const byColor = new Map();
+  for (const d of data) {
+    if (!byColor.has(d.color)) byColor.set(d.color, []);
+    byColor.get(d.color).push(d);
+  }
+  for (const [color, pts] of byColor) {
+    pts.sort((a, b) => a.pupilY - b.pupilY);
+    cx.strokeStyle = color;
+    cx.fillStyle = color;
+    cx.lineWidth = 1.2;
+    cx.beginPath();
+    for (let i = 0; i < pts.length; i++) {
+      const px = w/2 + (pts[i].pupilY / pupilMax) * (w/2 - 15);
+      const py = h/2 - (pts[i].dy / dyMax) * (h/2 - 15);
+      if (i === 0) cx.moveTo(px, py);
+      else cx.lineTo(px, py);
+    }
+    cx.stroke();
+    for (const p of pts) {
+      const px = w/2 + (p.pupilY / pupilMax) * (w/2 - 15);
+      const py = h/2 - (p.dy / dyMax) * (h/2 - 15);
+      cx.beginPath();
+      cx.arc(px, py, 1.8, 0, Math.PI * 2);
+      cx.fill();
+    }
+  }
+  cx.fillStyle = '#8a95a5';
+  cx.textAlign = 'right';
+  cx.fillText(`±${dyMax.toFixed(2)}mm`, w - 4, 20);
+}
+
+function drawDetectorProfile(rays) {
+  const c = $('detector-canvas');
+  if (c.clientWidth === 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (c.width !== c.clientWidth * dpr) {
+    c.width = c.clientWidth * dpr; c.height = c.clientHeight * dpr;
+  }
+  const cx = c.getContext('2d');
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = c.clientWidth, h = c.clientHeight;
+  cx.fillStyle = '#05080c';
+  cx.fillRect(0, 0, w, h);
+  const det = state.elements.find(e => e.type === 'detector');
+  if (!det) return;
+  const hits = [];
+  for (const r of rays) {
+    if (r.blocked) continue;
+    for (const dh of (r.detectorHits || [])) {
+      if (dh.detectorId === det.id) hits.push({ y: dh.localY, color: r.color });
+    }
+  }
+  $('detector-info').textContent = `#${det.id} · ${hits.length} hits · ±${(det.aperture/2).toFixed(0)}mm`;
+  if (hits.length === 0) return;
+  const halfA = det.aperture / 2;
+  const bins = 80;
+  const byColor = new Map();
+  for (const hit of hits) {
+    if (!byColor.has(hit.color)) byColor.set(hit.color, new Array(bins).fill(0));
+    const binIdx = Math.floor(((hit.y + halfA) / (2 * halfA)) * bins);
+    if (binIdx >= 0 && binIdx < bins) byColor.get(hit.color)[binIdx]++;
+  }
+  const smooth = (arr) => {
+    const out = new Array(arr.length).fill(0);
+    const k = [0.054, 0.244, 0.403, 0.244, 0.054];
+    for (let i = 0; i < arr.length; i++) {
+      let s = 0;
+      for (let j = 0; j < k.length; j++) {
+        const idx = i + j - 2;
+        if (idx >= 0 && idx < arr.length) s += arr[idx] * k[j];
+      }
+      out[i] = s;
+    }
+    return out;
+  };
+  let maxVal = 0;
+  const smoothed = new Map();
+  for (const [col, arr] of byColor) {
+    const sm = smooth(smooth(arr));
+    smoothed.set(col, sm);
+    maxVal = Math.max(maxVal, ...sm);
+  }
+  if (maxVal === 0) maxVal = 1;
+  cx.strokeStyle = 'rgba(138,149,165,0.3)';
+  cx.lineWidth = 1;
+  cx.beginPath();
+  cx.moveTo(10, h - 15); cx.lineTo(w - 10, h - 15);
+  cx.stroke();
+  cx.beginPath();
+  cx.moveTo(w/2, h - 15); cx.lineTo(w/2, h - 10);
+  cx.stroke();
+  cx.fillStyle = '#8a95a5';
+  cx.font = '9px Arial';
+  cx.textAlign = 'center';
+  cx.fillText('0', w/2, h - 3);
+  cx.textAlign = 'left';
+  cx.fillText(`-${halfA.toFixed(0)}`, 8, h - 3);
+  cx.textAlign = 'right';
+  cx.fillText(`+${halfA.toFixed(0)} mm`, w - 8, h - 3);
+  for (const [col, sm] of smoothed) {
+    cx.strokeStyle = col;
+    cx.fillStyle = col.replace('rgb', 'rgba').replace(')', ',0.2)');
+    cx.lineWidth = 1.5;
+    cx.beginPath();
+    cx.moveTo(10, h - 15);
+    for (let i = 0; i < sm.length; i++) {
+      const px = 10 + (i / (sm.length - 1)) * (w - 20);
+      const py = (h - 15) - (sm[i] / maxVal) * (h - 25);
+      if (i === 0) cx.moveTo(px, py);
+      else cx.lineTo(px, py);
+    }
+    cx.lineTo(w - 10, h - 15);
+    cx.closePath();
+    cx.fill();
+    cx.stroke();
+  }
+}
+
+// ================ DISPATCH ================
+function render() {
+  if (state.viewMode === '2d') render2D();
+  else render3D();
+}
+
+function updateHUD() {
+  $('hud-zoom').textContent = state.zoom.toFixed(2) + '×';
+  $('hud-pan').textContent = `${state.panX.toFixed(0)}, ${state.panY.toFixed(0)}`;
+  $('hud-count').textContent = state.elements.length;
+  if (state.showRuler && state.ruler.p1 && state.ruler.p2) {
+    const dx = state.ruler.p2.x - state.ruler.p1.x;
+    const dy = state.ruler.p2.y - state.ruler.p1.y;
+    const ang = ((Math.atan2(dy, dx) / DEG % 180) + 180) % 180;
+    $('hud-ruler').style.display = 'block';
+    $('hud-ruler-val').textContent = `${Math.hypot(dx, dy).toFixed(1)} mm · ${ang.toFixed(1)}°`;
+  } else {
+    $('hud-ruler').style.display = 'none';
+  }
+}
+
+// ================ ELEMENT LIST UI ================
+function renderElementList() {
+  const list = $('element-list');
+  list.innerHTML = '';
+  if (state.elements.length === 0) {
+    list.innerHTML = '<div class="tip">No elements. Add one below.</div>';
+    return;
+  }
+  for (const e of state.elements) {
+    const card = document.createElement('div');
+    card.className = 'element-card';
+    const labelMap = {
+      'convex-lens': 'Convex Lens', 'concave-lens': 'Concave Lens',
+      'flat-glass': 'Flat Glass',
+      'flat-mirror': 'Flat Mirror',
+      'convex-mirror': 'Convex Mirror', 'concave-mirror': 'Concave Mirror',
+      'aperture-stop': 'Aperture Stop', 'filter': 'Filter',
+      'detector': 'Detector'
+    };
+    const isLens = e.type === 'convex-lens' || e.type === 'concave-lens';
+    const isCurved = ['convex-lens','concave-lens','convex-mirror','concave-mirror'].includes(e.type);
+    const hasN = isLens || e.type === 'flat-glass';
+    const hasThickness = e.type === 'flat-glass';
+    const isFilter = e.type === 'filter';
+    card.innerHTML = `
+      <div class="el-header">
+        <span class="el-type">#${e.id} · ${labelMap[e.type]}</span>
+      </div>
+      <div class="el-row">
+        <label>Position X</label>
+        <input type="number" data-id="${e.id}" data-prop="x" value="${e.x}" step="5">
+      </div>
+      <div class="el-row">
+        <label>Position Y</label>
+        <input type="number" data-id="${e.id}" data-prop="y" value="${e.y}" step="5">
+      </div>
+      <div class="el-row">
+        <label>Rotation °</label>
+        <input type="number" data-id="${e.id}" data-prop="rotation" value="${(e.rotation || 0)}" step="5">
+      </div>
+      ${isCurved ? `
+      <div class="el-row">
+        <label>Focal length</label>
+        <input type="number" data-id="${e.id}" data-prop="focal" value="${e.focal}" step="5">
+      </div>` : ''}
+      <div class="el-row">
+        <label>Aperture</label>
+        <input type="number" data-id="${e.id}" data-prop="aperture" value="${e.aperture}" step="10">
+      </div>
+      ${e.type === 'aperture-stop' ? `
+      <div class="el-row">
+        <label>Hole size</label>
+        <input type="number" data-id="${e.id}" data-prop="holeSize" value="${e.holeSize}" step="5">
+      </div>` : ''}
+      ${(e.type === 'concave-mirror' || e.type === 'convex-mirror') ? `
+      <div class="el-row">
+        <label>Central hole ∅</label>
+        <input type="number" data-id="${e.id}" data-prop="centralHole" value="${e.centralHole || 0}" step="5" min="0" placeholder="0=none">
+      </div>
+      <div class="el-row">
+        <label style="font-size:10px;">One-sided (obstruction)</label>
+        <input type="checkbox" data-id="${e.id}" data-prop="oneSided" ${e.oneSided ? 'checked' : ''}>
+      </div>` : ''}
+      ${isFilter ? `
+      <div class="el-row">
+        <label>Center λ (nm)</label>
+        <input type="number" data-id="${e.id}" data-prop="centerWL" value="${e.centerWL}" step="10" min="380" max="750">
+      </div>
+      <div class="el-row">
+        <label>Bandwidth (nm)</label>
+        <input type="number" data-id="${e.id}" data-prop="bandwidth" value="${e.bandwidth}" step="5" min="1">
+      </div>` : ''}
+      ${hasN ? `
+      <div class="el-row">
+        <label>Refractive index n</label>
+        <input type="number" data-id="${e.id}" data-prop="n" value="${e.n}" step="0.01" min="1.0">
+      </div>` : ''}
+      ${hasThickness ? `
+      <div class="el-row">
+        <label>Thickness</label>
+        <input type="number" data-id="${e.id}" data-prop="thickness" value="${e.thickness}" step="1">
+      </div>` : ''}
+      <div class="el-actions">
+        <button class="lock-toggle ${e.locked ? 'locked' : ''}" data-id="${e.id}" data-action="lock">
+          ${e.locked ? '🔒 Locked' : '🔓 Unlocked'}
+        </button>
+        <button class="small danger" data-id="${e.id}" data-action="delete">Delete</button>
+      </div>
+    `;
+    list.appendChild(card);
+  }
+  list.querySelectorAll('input[data-id]').forEach(inp => {
+    inp.addEventListener('input', (ev) => {
+      const id = +ev.target.dataset.id;
+      const prop = ev.target.dataset.prop;
+      const el = state.elements.find(e => e.id === id);
+      if (!el) return;
+      if (ev.target.type === 'checkbox') {
+        el[prop] = ev.target.checked;
+      } else {
+        el[prop] = parseFloat(ev.target.value) || 0;
+      }
+      render();
+    });
+  });
+  list.querySelectorAll('button[data-action]').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      const id = +ev.target.dataset.id;
+      const action = ev.target.dataset.action;
+      const el = state.elements.find(e => e.id === id);
+      if (!el) return;
+      if (action === 'lock') {
+        el.locked = !el.locked;
+        renderElementList();
+        render();
+      } else if (action === 'delete') {
+        removeElement(id);
+      }
+    });
+  });
+}
+
+// ================ INTERACTION ================
+function hitTestRotationHandle(sx, sy) {
+  for (let i = state.elements.length - 1; i >= 0; i--) {
+    const e = state.elements[i];
+    if (e.locked) continue;
+    const rh = rotationHandlePos(e);
+    const rhS = W2S(rh.x, rh.y);
+    if (Math.hypot(sx - rhS.x, sy - rhS.y) < 10) {
+      return { kind: 'element-rot', target: e };
+    }
+  }
+  if (state.source.mode !== 'infinity') {
+    const sp = W2S(state.source.x, state.source.y);
+    const ang = state.source.rotation * DEG;
+    const rhX = sp.x + Math.cos(ang) * 38;
+    const rhY = sp.y + Math.sin(ang) * 38;
+    if (Math.hypot(sx - rhX, sy - rhY) < 10) return { kind: 'source-rot' };
+  }
+  return null;
+}
+
+function hitTestBody(sx, sy) {
+  for (let i = state.elements.length - 1; i >= 0; i--) {
+    const e = state.elements[i];
+    const p = W2S(e.x, e.y);
+    const radius = Math.max(14, (e.aperture / 4) * state.zoom);
+    if (Math.hypot(sx - p.x, sy - p.y) < radius) {
+      return { kind: 'element', target: e };
+    }
+  }
+  if (state.source.mode !== 'infinity') {
+    const sp = W2S(state.source.x, state.source.y);
+    if (Math.hypot(sx - sp.x, sy - sp.y) < 14) return { kind: 'source' };
+  }
+  return null;
+}
+
+canvas2d.addEventListener('mousedown', (ev) => {
+  const rect = canvas2d.getBoundingClientRect();
+  const sx = ev.clientX - rect.left, sy = ev.clientY - rect.top;
+  if (ev.button === 1 || ev.button === 2 || ev.shiftKey) {
+    state.panning = true;
+    state.panStart = { x: sx, y: sy };
+    return;
+  }
+  if (state.showRuler) {
+    const w = S2W(sx, sy);
+    if (!state.ruler.p1 || (state.ruler.p1 && state.ruler.p2)) {
+      state.ruler.p1 = { x: w.x, y: w.y };
+      state.ruler.p2 = null;
+    } else {
+      state.ruler.p2 = { x: w.x, y: w.y };
+    }
+    render();
+    return;
+  }
+  const rotHit = hitTestRotationHandle(sx, sy);
+  if (rotHit) { state.dragging = rotHit; return; }
+  const bodyHit = hitTestBody(sx, sy);
+  if (bodyHit) {
+    if (bodyHit.kind === 'element' && !bodyHit.target.locked) {
+      const w = S2W(sx, sy);
+      state.dragging = { kind: 'element', target: bodyHit.target };
+      state.dragOffset = { x: bodyHit.target.x - w.x, y: bodyHit.target.y - w.y };
+    } else if (bodyHit.kind === 'source') {
+      const w = S2W(sx, sy);
+      state.dragging = { kind: 'source' };
+      state.dragOffset = { x: state.source.x - w.x, y: state.source.y - w.y };
+    }
+  }
+});
+
+canvas2d.addEventListener('mousemove', (ev) => {
+  const rect = canvas2d.getBoundingClientRect();
+  const sx = ev.clientX - rect.left, sy = ev.clientY - rect.top;
+  const w = S2W(sx, sy);
+  $('hud-mouse').textContent = `${w.x.toFixed(0)}, ${w.y.toFixed(0)}`;
+  if (!state.dragging && !state.panning) {
+    const rotHit = hitTestRotationHandle(sx, sy);
+    const bodyHit = hitTestBody(sx, sy);
+    if (rotHit) canvas2d.style.cursor = 'grab';
+    else if (bodyHit) canvas2d.style.cursor = 'move';
+    else canvas2d.style.cursor = state.showRuler ? 'crosshair' : 'default';
+  }
+  if (state.panning) {
+    state.panX += sx - state.panStart.x;
+    state.panY += sy - state.panStart.y;
+    state.panStart = { x: sx, y: sy };
+    render();
+    return;
+  }
+  if (state.dragging) {
+    if (state.dragging.kind === 'element') {
+      state.dragging.target.x = w.x + state.dragOffset.x;
+      state.dragging.target.y = w.y + state.dragOffset.y;
+      renderElementList();
+    } else if (state.dragging.kind === 'source') {
+      state.source.x = w.x + state.dragOffset.x;
+      state.source.y = w.y + state.dragOffset.y;
+      $('src-x').value = Math.round(state.source.x);
+      $('src-y').value = Math.round(state.source.y);
+    } else if (state.dragging.kind === 'element-rot') {
+      const e = state.dragging.target;
+      const dx = w.x - e.x, dy = w.y - e.y;
+      e.rotation = Math.atan2(dy, dx) / DEG;
+      renderElementList();
+    } else if (state.dragging.kind === 'source-rot') {
+      const dx = w.x - state.source.x, dy = w.y - state.source.y;
+      state.source.rotation = Math.atan2(dy, dx) / DEG;
+      $('src-rot').value = Math.round(state.source.rotation);
+    }
+    render();
+  }
+});
+
+canvas2d.addEventListener('mouseup', () => { state.dragging = null; state.panning = false; });
+canvas2d.addEventListener('mouseleave', () => { state.dragging = null; state.panning = false; });
+canvas2d.addEventListener('contextmenu', (ev) => ev.preventDefault());
+
+canvas2d.addEventListener('wheel', (ev) => {
+  ev.preventDefault();
+  const rect = canvas2d.getBoundingClientRect();
+  const sx = ev.clientX - rect.left, sy = ev.clientY - rect.top;
+  const before = S2W(sx, sy);
+  const factor = ev.deltaY < 0 ? 1.12 : 1 / 1.12;
+  state.zoom = clamp(state.zoom * factor, 0.05, 10);
+  const after = S2W(sx, sy);
+  state.panX += (after.x - before.x) * state.zoom;
+  state.panY += (after.y - before.y) * state.zoom;
+  render();
+}, { passive: false });
+
+canvas3d.addEventListener('mousedown', (ev) => {
+  state.rot3D = true;
+  state.panStart = { x: ev.clientX, y: ev.clientY };
+});
+canvas3d.addEventListener('mousemove', (ev) => {
+  if (!state.rot3D) return;
+  const dx = ev.clientX - state.panStart.x;
+  const dy = ev.clientY - state.panStart.y;
+  state.cam3D.yaw += dx * 0.01;
+  state.cam3D.pitch = clamp(state.cam3D.pitch + dy * 0.01, -1.4, 1.4);
+  state.panStart = { x: ev.clientX, y: ev.clientY };
+  render();
+});
+window.addEventListener('mouseup', () => { state.rot3D = false; });
+canvas3d.addEventListener('wheel', (ev) => {
+  ev.preventDefault();
+  state.cam3D.dist = clamp(state.cam3D.dist + ev.deltaY, 300, 3000);
+  render();
+}, { passive: false });
+
+// ================ BINDINGS ================
+function bindInput(id, path, parser = parseFloat) {
+  $(id).addEventListener('input', (ev) => {
+    const val = parser(ev.target.value);
+    const parts = path.split('.');
+    let obj = state;
+    for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
+    obj[parts[parts.length - 1]] = val;
+    if (id === 'src-wavelength') {
+      $('wl-color').style.background = wavelengthToRGB(val);
+    }
+    render();
+  });
+}
+bindInput('src-x', 'source.x');
+bindInput('src-y', 'source.y');
+bindInput('src-rot', 'source.rotation');
+bindInput('src-rays', 'source.rays', v => parseInt(v, 10));
+bindInput('src-spread', 'source.spread');
+bindInput('src-wavelength', 'source.wavelength');
+bindInput('src-wl-min', 'source.wlMin');
+bindInput('src-wl-max', 'source.wlMax');
+bindInput('src-wl-steps', 'source.wlSteps', v => parseInt(v, 10));
+bindInput('src-angle', 'source.angle');
+bindInput('src-beam', 'source.beamWidth');
+bindInput('medium-n', 'medium.n');
+
+$('src-mode').addEventListener('change', (ev) => {
+  state.source.mode = ev.target.value;
+  updateSourceUI();
+  render();
+});
+
+$('src-spectrum').addEventListener('change', (ev) => {
+  state.source.spectrum = ev.target.value;
+  updateSourceUI();
+  render();
+});
+
+function updateSourceUI() {
+  const isInf = state.source.mode === 'infinity';
+  $('infinity-controls').classList.toggle('hidden', !isInf);
+  $('finite-controls').style.display = isInf ? 'none' : 'grid';
+  const label = $('spread-label');
+  if (state.source.mode === 'parallel') {
+    label.innerHTML = 'Beam height <span class="unit">mm</span>';
+  } else {
+    label.innerHTML = 'Spread <span class="unit">°</span>';
+  }
+  // Spectrum controls
+  $('mono-controls').classList.toggle('hidden', state.source.spectrum !== 'mono');
+  $('white-controls').classList.toggle('hidden', state.source.spectrum !== 'white');
+}
+
+$('aber-chromatic').addEventListener('change', (ev) => { state.aberChromatic = ev.target.checked; render(); });
+$('aber-spherical').addEventListener('change', (ev) => { state.aberSpherical = ev.target.checked; render(); });
+$('show-focal').addEventListener('change', (ev) => { state.showFocal = ev.target.checked; render(); });
+$('show-axis').addEventListener('change', (ev) => { state.showAxis = ev.target.checked; render(); });
+$('show-grid').addEventListener('change', (ev) => { state.showGrid = ev.target.checked; render(); });
+$('show-convergence').addEventListener('change', (ev) => { state.showConvergence = ev.target.checked; render(); });
+$('show-metrics').addEventListener('change', (ev) => { state.showMetrics = ev.target.checked; render(); });
+$('show-psf').addEventListener('change', (ev) => { state.showPSF = ev.target.checked; render(); });
+$('show-rayfan').addEventListener('change', (ev) => { state.showRayfan = ev.target.checked; render(); });
+$('show-ruler').addEventListener('change', (ev) => {
+  state.showRuler = ev.target.checked;
+  if (!state.showRuler) { state.ruler.p1 = null; state.ruler.p2 = null; }
+  render();
+});
+
+$('psf-close').addEventListener('click', () => { state.showPSF = false; $('show-psf').checked = false; render(); });
+$('rayfan-close').addEventListener('click', () => { state.showRayfan = false; $('show-rayfan').checked = false; render(); });
+
+document.querySelectorAll('.collapse').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const section = btn.closest('.section');
+    section.classList.toggle('collapsed');
+    btn.textContent = section.classList.contains('collapsed') ? '+' : '−';
+  });
+});
+
+document.querySelectorAll('[data-add]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    createElement(btn.dataset.add);
+    renderElementList();
+    render();
+  });
+});
+
+document.querySelectorAll('[data-preset]').forEach(btn => {
+  btn.addEventListener('click', () => loadPreset(btn.dataset.preset));
+});
+
+function loadPreset(name) {
+  state.elements = []; nextId = 1; state.tubes = [];
+  state.source.mode = 'infinity';
+  state.source.angle = 0;
+  state.source.beamWidth = 160;
+  state.source.rays = 11;
+  state.source.spectrum = 'mono';
+  state.source.rotation = 0;
+  $('src-mode').value = 'infinity';
+  $('src-angle').value = 0;
+  $('src-beam').value = 160;
+  $('src-rays').value = 11;
+  $('src-spectrum').value = 'mono';
+  $('src-rot').value = 0;
+  updateSourceUI();
+
+  state.tubes = [];  // clear tubes
+
+  if (name === 'keplerian') {
+    const obj = createElement('convex-lens');
+    obj.x = 0; obj.y = 0; obj.focal = 400; obj.aperture = 160; obj.n = 1.52;
+    const eye = createElement('convex-lens');
+    eye.x = 450; eye.y = 0; eye.focal = 50; eye.aperture = 30; eye.n = 1.52;
+    state.source.beamWidth = 140;
+    $('src-beam').value = 140;
+    // Tube: main barrel from source to eyepiece
+    state.tubes = [{ axis:'h', start: -500, end: 520, center: 0, radius: 88 }];
+  } else if (name === 'galilean') {
+    const obj = createElement('convex-lens');
+    obj.x = 0; obj.y = 0; obj.focal = 400; obj.aperture = 160; obj.n = 1.52;
+    const eye = createElement('concave-lens');
+    eye.x = 320; eye.y = 0; eye.focal = -80; eye.aperture = 30; eye.n = 1.52;
+    state.source.beamWidth = 140;
+    $('src-beam').value = 140;
+    state.tubes = [{ axis:'h', start: -500, end: 390, center: 0, radius: 88 }];
+  } else if (name === 'newtonian') {
+    const primary = createElement('concave-mirror');
+    primary.x = 500; primary.y = 0; primary.focal = 400; primary.aperture = 200;
+    primary.rotation = 180;
+    const diagonal = createElement('flat-mirror');
+    diagonal.x = 150; diagonal.y = 0; diagonal.aperture = 70;
+    diagonal.rotation = 135; diagonal.passThrough = true;  // incoming beam passes through, primary-reflected beam reflects
+    const eye = createElement('convex-lens');
+    // Verified: primary focus at (100,0), after diagonal → image at (150,-50)
+    // Eyepiece front focal must be at y=-50 → eye at y=-50-f=-80 for f=30
+    eye.x = 150; eye.y = -80; eye.focal = 30; eye.aperture = 26; eye.n = 1.52;
+    eye.rotation = 270;
+    state.source.beamWidth = 180;
+    $('src-beam').value = 180;
+    // Main horizontal tube + vertical focuser tube
+    state.tubes = [
+      { axis:'h', start: -100, end: 525, center: 0, radius: 108 },
+      { axis:'v', start: -115, end: 10,  center: 150, radius: 22 }
+    ];
+  } else if (name === 'cassegrain') {
+    // Verified numerics:
+    //   primary f=400 → focus at x=100
+    //   secondary (convex, oneSided) at x=175, f=-90 → system focus at x=625
+    //   secondary blocks initial central rays (central obstruction, one-sided)
+    //   primary has centralHole=70 → rays pass through after secondary reflection
+    const primary = createElement('concave-mirror');
+    primary.x = 500; primary.y = 0; primary.focal = 400; primary.aperture = 220;
+    primary.rotation = 180; primary.centralHole = 70;
+    const secondary = createElement('convex-mirror');
+    secondary.x = 175; secondary.y = 0; secondary.focal = -90; secondary.aperture = 70;
+    secondary.rotation = 0; secondary.oneSided = true;  // blocks incoming beam (central obstruction)
+    const eye = createElement('convex-lens');
+    // focus at x=625, eyepiece front focal at x=625 → eye at x=625+30=655
+    eye.x = 655; eye.y = 0; eye.focal = 30; eye.aperture = 30; eye.n = 1.52;
+    eye.rotation = 0;
+    state.source.beamWidth = 200;
+    $('src-beam').value = 200;
+    // Main tube covers entrance to just past primary
+    state.tubes = [{ axis:'h', start: -200, end: 525, center: 0, radius: 118 }];
+  }
+  renderElementList();
+  render();
+}
+
+$('view-2d').addEventListener('click', () => setView('2d'));
+$('view-3d').addEventListener('click', () => setView('3d'));
+
+function setView(mode) {
+  state.viewMode = mode;
+  $('view-2d').classList.toggle('active', mode === '2d');
+  $('view-3d').classList.toggle('active', mode === '3d');
+  $('canvas2d').style.display = mode === '2d' ? 'block' : 'none';
+  $('canvas3d').style.display = mode === '3d' ? 'block' : 'none';
+  resize();
+  render();
+}
+
+$('zoom-in').addEventListener('click', () => {
+  if (state.viewMode === '2d') state.zoom = clamp(state.zoom * 1.2, 0.05, 10);
+  else state.cam3D.dist = clamp(state.cam3D.dist / 1.2, 300, 3000);
+  render();
+});
+$('zoom-out').addEventListener('click', () => {
+  if (state.viewMode === '2d') state.zoom = clamp(state.zoom / 1.2, 0.05, 10);
+  else state.cam3D.dist = clamp(state.cam3D.dist * 1.2, 300, 3000);
+  render();
+});
+$('zoom-fit').addEventListener('click', () => {
+  if (state.elements.length > 0) {
+    const xs = state.elements.map(e => e.x);
+    const ys = state.elements.map(e => e.y);
+    const minX = Math.min(...xs, state.source.x) - 100;
+    const maxX = Math.max(...xs) + 100;
+    const minY = Math.min(...ys, 0) - 100;
+    const maxY = Math.max(...ys, 0) + 100;
+    const w = canvas2d.clientWidth, h = canvas2d.clientHeight;
+    state.zoom = clamp(Math.min(w / (maxX - minX + 100), h / (maxY - minY + 100)), 0.1, 5);
+    state.panX = -((minX + maxX) / 2) * state.zoom;
+    state.panY = -((minY + maxY) / 2) * state.zoom;
+  } else {
+    state.zoom = 1; state.panX = 0; state.panY = 0;
+  }
+  state.cam3D = { yaw: -0.5, pitch: 0.4, dist: 900 };
+  render();
+});
+
+$('reset-view').addEventListener('click', () => {
+  state.zoom = 1; state.panX = 0; state.panY = 0;
+  state.cam3D = { yaw: -0.5, pitch: 0.4, dist: 900 };
+  render();
+});
+
+$('clear-all').addEventListener('click', () => {
+  if (confirm('Remove all optical elements?')) {
+    state.elements = []; nextId = 1; state.tubes = [];
+    renderElementList(); render();
+  }
+});
+
+$('export-json').addEventListener('click', () => {
+  const data = {
+    version: 4,
+    source: state.source,
+    medium: state.medium,
+    elements: state.elements,
+    aberrations: { chromatic: state.aberChromatic, spherical: state.aberSpherical },
+    display: {
+      showFocal: state.showFocal, showAxis: state.showAxis,
+      showGrid: state.showGrid, showConvergence: state.showConvergence,
+      showMetrics: state.showMetrics, showPSF: state.showPSF, showRayfan: state.showRayfan
+    }
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'optics_setup.json';
+  a.click();
+});
+
+$('import-json').addEventListener('click', () => $('import-file').click());
+$('import-file').addEventListener('change', (ev) => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.source) Object.assign(state.source, data.source);
+      if (data.medium) Object.assign(state.medium, data.medium);
+      if (data.elements) {
+        state.elements = data.elements;
+        nextId = Math.max(0, ...state.elements.map(e => e.id)) + 1;
+      }
+      if (data.aberrations) {
+        state.aberChromatic = !!data.aberrations.chromatic;
+        state.aberSpherical = !!data.aberrations.spherical;
+      }
+      if (data.display) Object.assign(state, data.display);
+      $('src-x').value = state.source.x;
+      $('src-y').value = state.source.y;
+      $('src-rot').value = state.source.rotation || 0;
+      $('src-rays').value = state.source.rays;
+      $('src-spread').value = state.source.spread;
+      $('src-wavelength').value = state.source.wavelength;
+      $('src-wl-min').value = state.source.wlMin || 400;
+      $('src-wl-max').value = state.source.wlMax || 700;
+      $('src-wl-steps').value = state.source.wlSteps || 9;
+      $('src-angle').value = state.source.angle || 0;
+      $('src-beam').value = state.source.beamWidth || 200;
+      $('src-mode').value = state.source.mode;
+      $('src-spectrum').value = state.source.spectrum || 'mono';
+      $('aber-chromatic').checked = state.aberChromatic;
+      $('aber-spherical').checked = state.aberSpherical;
+      $('medium-n').value = state.medium.n;
+      $('wl-color').style.background = wavelengthToRGB(state.source.wavelength);
+      updateSourceUI();
+      renderElementList();
+      render();
+    } catch (err) {
+      alert('Failed to import: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+});
+
+function init() {
+  window.addEventListener('resize', () => { resize(); render(); });
+  resize();
+  $('wl-color').style.background = wavelengthToRGB(state.source.wavelength);
+  updateSourceUI();
+  loadPreset('keplerian');
+}
+init();
+
+</script>
+</body>
+</html>
